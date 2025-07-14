@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  biance-alpha-address-monitor:
+    build: 
+      context: .
+      args:
+        - HTTP_PROXY=
+        - HTTPS_PROXY=
+    container_name: biance-alpha-address-monitor
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    environment:
+      - TZ=Asia/Shanghai
+      - ENV=prod
+      - IS_DOCKER=true
+      - HTTP_PROXY=http://host.docker.internal:7890
+      - HTTPS_PROXY=http://host.docker.internal:7890
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    shm_size: '0.5gb'
+    restart: always
