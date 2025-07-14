@@ -1,0 +1,534 @@
+{
+  "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db": [
+    {
+      "token": "PrompTale AI (TALE)",
+      "contract": "0x37eff3ff1321fb9abc734761ca72fafdc044534a",
+      "number": 34633125329043469940705129
+    },
+    {
+      "token": "quq (quq)",
+      "contract": "0x4fa7c69a7b69f8bc48233024d546bc299d6b03bf",
+      "number": 120158155871580784561162220
+    },
+    {
+      "token": "AVL (AVL)",
+      "contract": "0x9beee89723ceec27d7c2834bec6834208ffdc202",
+      "number": 419309766953981387485480
+    },
+    {
+      "token": "BNB48 Club Token (KOGE)",
+      "contract": "0xe6df05ce8c8301223373cf5b969afcb1498c5528",
+      "number": 9280453394217221344716
+    },
+    {
+      "token": "EGL1 (EGL1)",
+      "contract": "0xf4b385849f2e817e92bffbfb9aeb48f950ff4444",
+      "number": 11550281514774927027249257
+    },
+    {
+      "token": "BugsCoin (BGSC)",
+      "contract": "0xa4b68d48d7bc6f04420e8077e6f74bdef809dea3",
+      "number": 238534180292465600401482382
+    },
+    {
+      "token": "Bedrock (BR)",
+      "contract": "0xff7d6a96ae471bbcd7713af9cb1feeb16cf56b41",
+      "number": 9738449415928052462039296
+    },
+    {
+      "token": "AB (AB)",
+      "contract": "0x95034f653d5d161890836ad2b6b8cc49d14e029a",
+      "number": 992215831612182148505267590
+    },
+    {
+      "token": "MilkyWay (MILK)",
+      "contract": "0x7b4bf9feccff207ef2cb7101ceb15b8516021acd",
+      "number": 5955938857180
+    },
+    {
+      "token": "Infinity Ground AI (AIN)",
+      "contract": "0x9558a9254890b2a8b057a789f413631b9084f4a3",
+      "number": 8578347741389116129192615
+    },
+    {
+      "token": "Build On BNB (BOB)",
+      "contract": "0x51363f073b1e4920fda7aa9e9d84ba97ede1560e",
+      "number": 272208072856693447915345195690160
+    },
+    {
+      "token": "VELO (VELO)",
+      "contract": "0xf486ad071f3bee968384d2e39e2d8af0fcf6fd46",
+      "number": 33842474231703081223359335
+    },
+    {
+      "token": "CARV (CARV)",
+      "contract": "0xc08cd26474722ce93f4d0c34d16201461c10aa8c",
+      "number": 4688955800300516237838292
+    },
+    {
+      "token": "MemeCore (M)",
+      "contract": "0x22b1458e780f8fa71e2f84502cee8b5a3cc731fa",
+      "number": 4865640949171323872647073
+    },
+    {
+      "token": "Boom (BOOM)",
+      "contract": "0xce7c3b5e058c196a0eaaa21f8e4bf8c2c07c2935",
+      "number": 12527933766542688518236167
+    },
+    {
+      "token": "CUDIS (CUDIS)",
+      "contract": "0xc1353d3ee02fdbd4f65f92eee543cfd709049cb1",
+      "number": 4936022525768010886689517
+    },
+    {
+      "token": "B (B)",
+      "contract": "0x6bdcce4a559076e37755a78ce0c06214e59e4444",
+      "number": 4455014821201078136504585
+    },
+    {
+      "token": "Binance-Peg BSC-USD (BSC-USD)",
+      "contract": "0x55d398326f99059ff775485246999027b3197955",
+      "number": 809509717485079632179485
+    },
+    {
+      "token": "CESSToken (CESS)",
+      "contract": "0x0c78d4605c2972e5f989de9019de1fb00c5d3462",
+      "number": 58861864586633070208828115
+    },
+    {
+      "token": "Cross (CROSS)",
+      "contract": "0x6bf62ca91e397b5a7d1d6bce97d9092065d7a510",
+      "number": 14998154694467605123743638
+    },
+    {
+      "token": "Sperax (SPA)",
+      "contract": "0x1a9fd6ec3144da3dd6ea13ec1c25c58423a379b1",
+      "number": 38906653928691772603548764
+    },
+    {
+      "token": "OKZOO (AIOT)",
+      "contract": "0x55ad16bd573b3365f43a9daeb0cc66a73821b4a5",
+      "number": 3226900248068677685278572
+    },
+    {
+      "token": "Metaplex (MPLX)",
+      "contract": "0x75a5863a19af60ec0098d62ed8c34cc594fb470f",
+      "number": 2162454645548
+    },
+    {
+      "token": "Jager Hunter (Jager)",
+      "contract": "0x74836cc0e821a6be18e407e6388e430b689c66e9",
+      "number": 3191243462348502503557868610565462
+    },
+    {
+      "token": "Mubarakah (Mubarakah)",
+      "contract": "0x3199a64bc8aabdfd9a3937a346cc59c3d81d8a9a",
+      "number": 235522447855867670836697141
+    },
+    {
+      "token": "Caila (CA)",
+      "contract": "0x74da4c5f8c254dd4fb39f9804c0924f52a808318",
+      "number": 237552410385073595043898538
+    },
+    {
+      "token": "BOOP (BOOP)",
+      "contract": "0x9a70815dfb644a24b57358e1041f8d0324c8f6e1",
+      "number": 3618080021133729045509148
+    },
+    {
+      "token": "Tell A Tale (TAT)",
+      "contract": "0x996d1b997203a024e205069a304161ba618d1c61",
+      "number": 276868404625295250991839299
+    },
+    {
+      "token": "PeaqOFT (PEAQ)",
+      "contract": "0x8b9ee39195ea99d6ddd68030f44131116bc218f6",
+      "number": 8215239521384309481301068
+    },
+    {
+      "token": "TGT (TGT)",
+      "contract": "0x6c58e4a513d3a8062e57f41a1442e003af14ebb5",
+      "number": 38734895538766662716300182
+    },
+    {
+      "token": "Rekt (REKT)",
+      "contract": "0x20482b0b4d9d8f60d3ab432b92f4c4b901a0d10c",
+      "number": 1726713388137941302027554159850
+    },
+    {
+      "token": "Matchain (MAT)",
+      "contract": "0xfe2dd2d57a05f89438f3aec94eafa4070396bab0",
+      "number": 934288910283688261648240
+    },
+    {
+      "token": "Space Nation Oikos (OIK)",
+      "contract": "0xb035723d62e0e2ea7499d76355c9d560f13ba404",
+      "number": 7170367161880268763656537
+    },
+    {
+      "token": "BULLA (BULLA)",
+      "contract": "0x595e21b20e78674f8a64c1566a20b2b316bc3511",
+      "number": 12009021809985887436455059
+    },
+    {
+      "token": "MEET48 Token (IDOL)",
+      "contract": "0x3b4de3c7855c03bb9f50ea252cd2c9fa1125ab07",
+      "number": 34246812144823553230592095
+    },
+    {
+      "token": "Polyhedra Network (ZKJ)",
+      "contract": "0xc71b5f631354be6853efe9c3ab6b9590f8302e81",
+      "number": 1839515362372732230009895
+    },
+    {
+      "token": "MYX (MYX)",
+      "contract": "0xd82544bf0dfe8385ef8fa34d67e6e4940cc63e16",
+      "number": 6353922885216674436217061
+    },
+    {
+      "token": "Frodo the virtual samurai (FROG)",
+      "contract": "0x4ad663403df2f0e7987bc9c74561687472e1611c",
+      "number": 369274298129723455159665640
+    },
+    {
+      "token": "NodeOps (NODE)",
+      "contract": "0x2f714d7b9a035d4ce24af8d9b6091c07e37f43fb",
+      "number": 2324141218668117449137911
+    },
+    {
+      "token": "donkey (DONKEY)",
+      "contract": "0xa49fa5e8106e2d6d6a69e78df9b6a20aab9c4444",
+      "number": 409020505527616837783897161
+    },
+    {
+      "token": "RCADE (RCADE)",
+      "contract": "0x6f0037c79d144d5b8e3e6f04e49fbb5f25fd508f",
+      "number": 662015884523960299370510754
+    },
+    {
+      "token": "Velvet (VELVET)",
+      "contract": "0x8b194370825e37b33373e74a41009161808c1488",
+      "number": 10270631154654758171447886
+    },
+    {
+      "token": "Binance-Peg USD Coin (USDC)",
+      "contract": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+      "number": 224914785363732761231793
+    },
+    {
+      "token": "Echo (ECHO)",
+      "contract": "0x06238c1b8e618abedf17669228dc95fb2d2e210b",
+      "number": 3920095292797633
+    },
+    {
+      "token": "BEE (BEE)",
+      "contract": "0xdb6f1f098b55e36b036603c8e54663a8d907d6e1",
+      "number": 8816834129640299100608456
+    },
+    {
+      "token": "Privasea AI (PRAI)",
+      "contract": "0x899357e54c2c4b014ea50a9a7bf140ba6df2ec73",
+      "number": 14039820786477150181938483
+    },
+    {
+      "token": "RDO Token (RDO)",
+      "contract": "0xd86e6ef14b96d942ef0abf0720c549197ea8c528",
+      "number": 188603538878639322345792758
+    },
+    {
+      "token": "BSquared Token (B2)",
+      "contract": "0x783c3f003f172c6ac5ac700218a357d2d66ee2a2",
+      "number": 6481756212728723644671415
+    },
+    {
+      "token": "Humanity (H)",
+      "contract": "0x44f161ae29361e332dea039dfa2f404e0bc5b5cc",
+      "number": 5401004665440077510486393
+    },
+    {
+      "token": "gorilla (gorilla)",
+      "contract": "0xcf640fdf9b3d9e45cbd69fda91d7e22579c14444",
+      "number": 171487691799160548166782679
+    },
+    {
+      "token": "BNB Card (BNB Card)",
+      "contract": "0xdc06717f367e57a16e06cce0c4761604460da8fc",
+      "number": 499283047735604834514602260
+    },
+    {
+      "token": "Puffverse Token (PFVS)",
+      "contract": "0x57df399cace62f98a74bffdffbb264e6f31bd982",
+      "number": 8903512723522773488376027
+    },
+    {
+      "token": "AICell (AICell)",
+      "contract": "0xde04da55b74435d7b9f2c5c62d9f1b53929b09aa",
+      "number": 258125275370470245146711822
+    },
+    {
+      "token": "Elderglade (ELDE)",
+      "contract": "0x799a290f9cc4085a0ce5b42b5f2c30193a7a872b",
+      "number": 16631964172907840377391400
+    },
+    {
+      "token": "MGO (MGO)",
+      "contract": "0x5e0d6791edbeeba6a14d1d38e2b8233257118eb1",
+      "number": 3017566176782148
+    },
+    {
+      "token": "BNBXBT (BNBXBT)",
+      "contract": "0xa18bbdcd86e4178d10ecd9316667cfe4c4aa8717",
+      "number": 317143010436716851538565883
+    },
+    {
+      "token": "Lorenzo Governance Token (BANK)",
+      "contract": "0x3aee7602b612de36088f3ffed8c8f10e86ebf2bf",
+      "number": 45683658682802854945099624
+    },
+    {
+      "token": "Balance (EPT)",
+      "contract": "0x3dc8e2d80b6215a1bccae4d38715c3520581e77c",
+      "number": 45013736931641342881332876
+    },
+    {
+      "token": "SynFutures (F)",
+      "contract": "0xc9ccbd76c2353e593cc975f13295e8289d04d3bb",
+      "number": 34870273772389000461221805
+    },
+    {
+      "token": "Koma Inu (KOMA)",
+      "contract": "0xd5eaaac47bd1993d661bc087e15dfb079a7f3c19",
+      "number": 16136463710306171166802664
+    },
+    {
+      "token": "Xterio (XTER)",
+      "contract": "0x103071da56e7cd95b415320760d6a0ddc4da1ca5",
+      "number": 873673938187899533788616
+    },
+    {
+      "token": "AIFlow Token (AFT)",
+      "contract": "0xabd834a7823567673e1ac07635d5d9857b34a8d3",
+      "number": 6648051133156907651928270
+    },
+    {
+      "token": "SIREN (SIREN)",
+      "contract": "0x997a58129890bbda032231a52ed1ddc845fc18e1",
+      "number": 4730568943960570428949929
+    },
+    {
+      "token": "SKYAI (SKYAI)",
+      "contract": "0x92aa03137385f18539301349dcfc9ebc923ffb10",
+      "number": 56442649192780102269464651
+    },
+    {
+      "token": "AITECH (AITECH)",
+      "contract": "0x2d060ef4d6bf7f9e5edde373ab735513c0e4f944",
+      "number": 1757750713203654243273458
+    },
+    {
+      "token": "SOON Token (SOON)",
+      "contract": "0xb9e1fd5a02d3a33b25a14d661414e6ed6954a721",
+      "number": 1780337689289864851574669
+    },
+    {
+      "token": "Allo (RWA)",
+      "contract": "0x9c8b5ca345247396bdfac0395638ca9045c6586e",
+      "number": 232723414717499083152896711
+    },
+    {
+      "token": "Palio (PAL)",
+      "contract": "0xb7e548c4f133adbb910914d7529d5cb00c2e9051",
+      "number": 6084091568879
+    },
+    {
+      "token": "FUEL (FUEL)",
+      "contract": "0x5c8daeabc57e9249606d3bd6d1e097ef492ea3c5",
+      "number": 21119789126644364
+    },
+    {
+      "token": "Assisterr AI (ASRR)",
+      "contract": "0xf7626c7ff7b778aaf187d508d056a9398d9545d1",
+      "number": 1160128338951250
+    },
+    {
+      "token": "Bondex Token (BDXN)",
+      "contract": "0x1036b2379f506761f237fba7463857924ef21ce3",
+      "number": 7086762564097345506362951
+    },
+    {
+      "token": "Alaya Governance Token (AGT)",
+      "contract": "0x5dbde81fce337ff4bcaaee4ca3466c00aecae274",
+      "number": 19171805573558319111176636
+    },
+    {
+      "token": "REX (REX)",
+      "contract": "0x90869b3a42e399951bd5f5ff278b8cc5ee1dc0fe",
+      "number": 7592261269807988098565820
+    },
+    {
+      "token": "Perry (PERRY)",
+      "contract": "0x5043f271095350c5ac7db2384a0d9337e27c1055",
+      "number": 226223037140517854632613959
+    },
+    {
+      "token": "KiloEx Token (KILO)",
+      "contract": "0x503fa24b7972677f00c4618e5fbe237780c1df53",
+      "number": 9694160729577801517380900
+    },
+    {
+      "token": "MERL (MERL)",
+      "contract": "0xa0c56a8c0692bd10b3fa8f8ba79cf5332b7107f9",
+      "number": 11360740927676919735983635
+    },
+    {
+      "token": "pumpBTC Governance token (PUMP)",
+      "contract": "0xb7c0007ab75350c582d5eab1862b872b5cf53f0c",
+      "number": 3176223733559689067856162
+    },
+    {
+      "token": "Pundi AI (PUNDIAI)",
+      "contract": "0x67aa700ab0110cc52bf7f308fe25068e87a0f581",
+      "number": 325266368413034605586364
+    },
+    {
+      "token": "Tagger (TAG)",
+      "contract": "0x208bf3e7da9639f1eaefa2de78c23396b0682025",
+      "number": 1329547489832245513038848671
+    },
+    {
+      "token": "GhibliCZ (Ghibli)",
+      "contract": "0x795d2710e383f33fbebe980a155b29757b6703f3",
+      "number": 454142507704403727407924093
+    },
+    {
+      "token": "Bubb (BUBB)",
+      "contract": "0xd5369a3cac0f4448a9a96bb98af9c887c92fc37b",
+      "number": 170089845341401218817212897
+    },
+    {
+      "token": "CreatorBid (BID)",
+      "contract": "0xa1832f7f4e534ae557f9b5ab76de54b1873e498b",
+      "number": 1659515459391802504378870
+    },
+    {
+      "token": "SERAPH (SERAPH)",
+      "contract": "0xd6b48ccf41a62eb3891e58d0f006b19b01d50cca",
+      "number": 3443138110251617823824793
+    },
+    {
+      "token": "Vita Inu (VINU)",
+      "contract": "0xfebe8c1ed424dbf688551d4e2267e7a53698f0aa",
+      "number": 18991546807464882844245408512315
+    },
+    {
+      "token": "why (WHY)",
+      "contract": "0x9ec02756a559700d8d9e79ece56809f7bcc5dc27",
+      "number": 11935098085816826113650875506832
+    },
+    {
+      "token": "AGON Agent (AGON)",
+      "contract": "0x3ca729bfd4bbad155f072752510226b37a5b7723",
+      "number": 7589425856114549510272686
+    },
+    {
+      "token": "Janitor (Janitor)",
+      "contract": "0x3c8d20001fe883934a15c949a3355a65ca984444",
+      "number": 29186885739133095435115063
+    },
+    {
+      "token": "Open Loot (OL)",
+      "contract": "0x3f160760535eb715d5809a26cf55408a2d9844c1",
+      "number": 11303216581158297358746321
+    },
+    {
+      "token": "Port3 Network (PORT3)",
+      "contract": "0xb4357054c3da8d46ed642383f03139ac7f090343",
+      "number": 6349210033158394845677424
+    },
+    {
+      "token": "MindNetwork FHE Token (FHE)",
+      "contract": "0xd55c9fb62e176a8eb6968f32958fefdd0962727e",
+      "number": 8504391622663676743876448
+    },
+    {
+      "token": "Fair and Free (FAIR3)",
+      "contract": "0x6952c5408b9822295ba4a7e694d0c5ffdb8fe320",
+      "number": 14655115188695166196134254
+    },
+    {
+      "token": "Cakepie (CKP)",
+      "contract": "0x2b5d9adea07b590b638ffc165792b2c610eda649",
+      "number": 333977828280837757197286
+    },
+    {
+      "token": "Orbiter Token (OBT)",
+      "contract": "0xcef5b397051fc92026249670e918c0ad7b8585e4",
+      "number": 80574514246040280752664593
+    },
+    {
+      "token": "League of Traders (LOT)",
+      "contract": "0xbfe78de7d1c51e0868501d5fa3e88e674c79acdd",
+      "number": 6558291693729228006677746
+    },
+    {
+      "token": "LayerEdge (EDGEN)",
+      "contract": "0x0c808f0464c423d5ea4f4454fcc23b6e2ae75562",
+      "number": 17567218768005331575348708
+    },
+    {
+      "token": "Roam Token (ROAM)",
+      "contract": "0x3fefe29da25bea166fb5f6ade7b5976d2b0e586b",
+      "number": 3667464326407
+    },
+    {
+      "token": "GOMBLE (GM)",
+      "contract": "0xd8002d4bd1d50136a731c141e3206d516e6d3b3d",
+      "number": 17714849607973845371625938
+    },
+    {
+      "token": "Skate (SKATE)",
+      "contract": "0x61dbbbb552dc893ab3aad09f289f811e67cef285",
+      "number": 19249166313804567377141889
+    },
+    {
+      "token": "Bombie (BOMB)",
+      "contract": "0x7e975d85714b11d862c7cffee3c88d565a139eb7",
+      "number": 68658475637430708493170759
+    },
+    {
+      "token": "Doodles (DOOD)",
+      "contract": "0x722294f6c97102fb0ddb5b907c8d16bdeab3f6d9",
+      "number": 183125191663061645213827413
+    },
+    {
+      "token": "Subsquid (SQD)",
+      "contract": "0xe50e3d1a46070444f44df911359033f2937fcc13",
+      "number": 5841059532151971294688317
+    },
+    {
+      "token": "Broccoli (BROCCOLI)",
+      "contract": "0x23d3f4eaaa515403c6765bb623f287a8cca28f2b",
+      "number": 26086987072399797105719338
+    },
+    {
+      "token": "Ultiverse Token (ULTI)",
+      "contract": "0x0e7779e698052f8fe56c415c3818fcf89de9ac6d",
+      "number": 74555798223774806230631585
+    },
+    {
+      "token": "Moonveil (MORE)",
+      "contract": "0xfe723495f73714426493384eb5e49aa5b827e1d5",
+      "number": 5341410649289943536238774
+    },
+    {
+      "token": "PUFFER (PUFFER)",
+      "contract": "0x87d00066cf131ff54b72b134a217d5401e5392b6",
+      "number": 3537031769668620920047863
+    },
+    {
+      "token": "Broccoli (Broccoli)",
+      "contract": "0x12b4356c65340fb02cdff01293f95febb1512f3b",
+      "number": 132835958216175288550580047
+    }
+  ]
+}

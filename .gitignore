@@ -9,3 +9,6 @@
 .env.development
 .env.test
 .env.production
+
+__pycache__
+token_records.json

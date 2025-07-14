@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 
 # 加载环境变量
@@ -13,19 +14,19 @@ WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 PROXY_URL = os.getenv('PROXY_URL')
 USE_PROXY = os.getenv('USE_PROXY', 'false').lower() == 'true'
 
-# 监听配置
-MONITOR_ADDRESSES = os.getenv('MONITOR_ADDRESSES', '').split(',')
-MONITOR_ADDRESSES = [addr.strip() for addr in MONITOR_ADDRESSES if addr.strip()]
+# 监听配置 - 支持数组格式
+MONITOR_ADDRESSES_STR = os.getenv('MONITOR_ADDRESSES', '[]')
+try:
+    MONITOR_ADDRESSES = json.loads(MONITOR_ADDRESSES_STR)
+except json.JSONDecodeError:
+    # 兼容字符串格式
+    MONITOR_ADDRESSES = [addr.strip() for addr in MONITOR_ADDRESSES_STR.split(',') if addr.strip()]
 
-# 指定代币合约地址 (用逗号分隔)
-MONITOR_TOKENS = os.getenv('MONITOR_TOKENS', '').split(',')
-MONITOR_TOKENS = [token.strip() for token in MONITOR_TOKENS if token.strip()]
-
-# 监听的转入数额阈值 (原始数量，不考虑小数点)
-TRANSFER_AMOUNT_THRESHOLD = os.getenv('TRANSFER_AMOUNT_THRESHOLD', '1000000000000000000')
+# 新代币数量阈值 (默认 1M = 1000000)
+NEW_TOKEN_AMOUNT_THRESHOLD = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD', '1000000'))
 
 # 检查间隔 (秒) - 默认10分钟
 CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '600'))
 
-# 余额记录文件
-BALANCE_FILE = 'balance_records.json' 
+# 代币记录文件
+TOKEN_RECORDS_FILE = 'token_records.json' 
