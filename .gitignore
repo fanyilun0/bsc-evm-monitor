@@ -13,4 +13,5 @@
 __pycache__
 token_records.json
 *.log
+logs/
 token_records_*.json

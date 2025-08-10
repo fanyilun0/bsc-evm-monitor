@@ -164,6 +164,31 @@ log(f'🔗 目标链: {CHAIN_NAME} (Chain ID: {CHAIN_ID})')
 log(f'🔗 API URL: {ETHERSCAN_API_URL}')
 log(f'🔗 Explorer URL: {get_explorer_url(CHAIN_ID)}')
 
+# Redis 配置
+REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
+REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
+REDIS_DB = int(os.getenv('REDIS_DB', '0'))
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
+TWEET_QUEUE_NAME = os.getenv('TWEET_QUEUE_NAME', 'tweet_queue')
+
+log(f'📦 Redis 配置:')
+log(f'   主机: {REDIS_HOST}:{REDIS_PORT}')
+log(f'   数据库: {REDIS_DB}')
+log(f'   密码: {"已设置" if REDIS_PASSWORD else "未设置"}')
+log(f'   推文队列: {TWEET_QUEUE_NAME}')
+
+# Config 类 - 为了兼容其他模块的使用
+class Config:
+    # 日志配置
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    
+    # Redis 配置
+    REDIS_HOST = REDIS_HOST
+    REDIS_PORT = REDIS_PORT
+    REDIS_DB = REDIS_DB
+    REDIS_PASSWORD = REDIS_PASSWORD
+    TWEET_QUEUE_NAME = TWEET_QUEUE_NAME
+
 # 输出支持的所有链
 log(f'\n🌐 支持的链配置:')
 for chain_id, config in CHAINS_CONFIG.items():

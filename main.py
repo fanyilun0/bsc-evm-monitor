@@ -9,11 +9,13 @@ from config import (
     NEW_TOKEN_AMOUNT_THRESHOLD, CHECK_INTERVAL, 
     PROXY_URL, USE_PROXY, IS_DEV, CHAIN_ID,
     CHAINS_CONFIG, get_api_url, get_explorer_url, get_chain_name, get_token_records_file,
-    MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES
+    MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES,
+    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD, QUEUE_NAME
 )
 from logger import log
 from webhook import send_message_async
 import os
+import redis
 
 class NewTokenMonitor:
     def __init__(self, chain_id=None):
@@ -38,10 +40,99 @@ class NewTokenMonitor:
         # 时间窗口配置（分钟）
         self.time_window_minutes = TIME_WINDOW_MINUTES
         
+        # 初始化 Redis 连接
+        self.redis_client = None
+        self.init_redis()
+        
         log(f"🔗 初始化监听器 - 链: {self.chain_name} (ID: {self.chain_id})")
         log(f"🔗 API URL: {self.api_url}")
         log(f"🔗 Explorer URL: {self.explorer_url}")
         log(f"⏰ 时间窗口: 最近 {self.time_window_minutes} 分钟")
+    
+    def init_redis(self):
+        """初始化 Redis 连接"""
+        try:
+            redis_config = {
+                'host': REDIS_HOST,
+                'port': REDIS_PORT,
+                'db': REDIS_DB,
+                'decode_responses': True,
+            }
+            if REDIS_PASSWORD:
+                redis_config['password'] = REDIS_PASSWORD
+            
+            self.redis_client = redis.Redis(**redis_config)
+            self.redis_client.ping()
+            log(f"📦 Redis 连接成功: {REDIS_HOST}:{REDIS_PORT}")
+        except Exception as e:
+            log(f"❌ Redis 连接失败: {e}")
+            self.redis_client = None
+    
+    def generate_alpha_event(self, qualified_token):
+        """生成符合 alpha.json 格式的事件数据"""
+        try:
+            # 确保地址字段存在
+            address = qualified_token.get('address', 'Unknown')
+            contract = qualified_token.get('contract', 'Unknown')
+            token_name = qualified_token.get('token', 'Unknown Token')
+            amount = qualified_token.get('amount', 0)
+            
+            # 从 token 字段解析名称和符号
+            # 格式通常为 "TokenName (SYMBOL)"
+            if '(' in token_name and ')' in token_name:
+                name_part = token_name.split('(')[0].strip()
+                symbol_part = token_name.split('(')[1].split(')')[0].strip()
+            else:
+                name_part = token_name
+                symbol_part = 'Unknown'
+            
+            # 生成浏览器链接
+            explorer_link = f"{self.explorer_url}/token/{contract}?a={address}"
+            
+            # 构建 alpha 事件
+            alpha_event = {
+                "type": "alpha_new_token",
+                "chain": self.chain_name,
+                "address": address,
+                "name": name_part,
+                "symbol": symbol_part,
+                "amount": amount,
+                "contract": contract,
+                "explorer": explorer_link,
+                "threshold": NEW_TOKEN_AMOUNT_THRESHOLD,
+                "detected_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            return alpha_event
+        except Exception as e:
+            log(f"❌ 生成 Alpha 事件失败: {e}")
+            return None
+    
+    def push_alpha_event_to_redis(self, qualified_token):
+        """将符合条件的代币事件推送到 Redis 队列"""
+        if not self.redis_client:
+            log("⚠️ Redis 未连接，跳过事件推送")
+            return False
+        
+        try:
+            # 生成 alpha 事件数据
+            alpha_event = self.generate_alpha_event(qualified_token)
+            if not alpha_event:
+                return False
+            
+            # 推送到 Redis 队列
+            self.redis_client.lpush(QUEUE_NAME, json.dumps(alpha_event, ensure_ascii=False))
+            
+            log(f"🚀 Alpha 事件已推送到队列 {QUEUE_NAME}:")
+            log(f"   代币: {alpha_event['name']} ({alpha_event['symbol']})")
+            log(f"   数量: {alpha_event['amount']}")
+            log(f"   地址: {alpha_event['address']}")
+            log(f"   合约: {alpha_event['contract']}")
+            
+            return True
+        except Exception as e:
+            log(f"❌ 推送 Alpha 事件到 Redis 失败: {e}")
+            return False
         
     def load_token_records(self):
         """加载代币记录 - 新格式，按链ID分别存储"""
@@ -430,14 +521,18 @@ class NewTokenMonitor:
                     # 判断是否超过阈值
                     if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD:
                         log(f"✅ 新代币 {token_symbol} 数量 {formatted_amount} 超过阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
-                        qualified_tokens.append({
+                        qualified_token = {
                             'address': address,
                             'contract': token['contract'],
                             'token': token['token'],
                             'decimals': token_decimals,
                             'amount': formatted_amount,
                             'raw_balance': balance
-                        })
+                        }
+                        qualified_tokens.append(qualified_token)
+                        
+                        # 推送 Alpha 事件到 Redis 队列
+                        self.push_alpha_event_to_redis(qualified_token)
                     else:
                         log(f"📉 新代币数量 {formatted_amount} 未达到阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
                 else:
