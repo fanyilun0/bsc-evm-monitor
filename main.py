@@ -10,7 +10,7 @@ from config import (
     PROXY_URL, USE_PROXY, IS_DEV, CHAIN_ID,
     CHAINS_CONFIG, get_api_url, get_explorer_url, get_chain_name, get_token_records_file,
     MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES,
-    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD, QUEUE_NAME
+    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD, TWEET_QUEUE_NAME
 )
 from logger import log
 from webhook import send_message_async
@@ -121,9 +121,9 @@ class NewTokenMonitor:
                 return False
             
             # 推送到 Redis 队列
-            self.redis_client.lpush(QUEUE_NAME, json.dumps(alpha_event, ensure_ascii=False))
+            self.redis_client.lpush(TWEET_QUEUE_NAME, json.dumps(alpha_event, ensure_ascii=False))
             
-            log(f"🚀 Alpha 事件已推送到队列 {QUEUE_NAME}:")
+            log(f"🚀 Alpha 事件已推送到队列 {TWEET_QUEUE_NAME}:")
             log(f"   代币: {alpha_event['name']} ({alpha_event['symbol']})")
             log(f"   数量: {alpha_event['amount']}")
             log(f"   地址: {alpha_event['address']}")
