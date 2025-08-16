@@ -3,17 +3,16 @@ import json
 from dotenv import load_dotenv
 from datetime import datetime
 from logger import log, get_logger
+import requests
+
+# 是否已经输出过配置日志
+_config_logged = False
 
 # 加载环境变量
 load_dotenv(override=True)
 
-# 环境配置
-ENV = os.getenv('ENV', 'dev').lower()  # dev 或 prod
-IS_DEV = ENV == 'dev'
-IS_PROD = ENV == 'prod'
-
 # 初始化日志记录器
-logger = get_logger(ENV)
+logger = get_logger()
 
 # Etherscan V2 API 配置 - 支持多个API密钥
 ETHERSCAN_API_KEYS_STR = os.getenv('ETHERSCAN_API_KEYS', '')
@@ -25,16 +24,11 @@ if ETHERSCAN_API_KEYS_STR:
     try:
         ETHERSCAN_API_KEYS = [key.strip() for key in ETHERSCAN_API_KEYS_STR.split(',') if key.strip()]
         ETHERSCAN_API_KEY = ETHERSCAN_API_KEYS[0] if ETHERSCAN_API_KEYS else ''  # 使用第一个密钥作为默认值
-        log(f'🔑 配置了 {len(ETHERSCAN_API_KEYS)} 个Etherscan API密钥')
-        for i, key in enumerate(ETHERSCAN_API_KEYS, 1):
-            log(f'  密钥 {i}: {key[:10]}...' if key else f'  密钥 {i}: 未设置')
     except Exception as e:
-        log(f'❌ 解析API密钥配置失败: {e}')
         ETHERSCAN_API_KEYS = [ETHERSCAN_API_KEY] if ETHERSCAN_API_KEY else []
 else:
     # 兼容单个API密钥配置
     ETHERSCAN_API_KEYS = [ETHERSCAN_API_KEY] if ETHERSCAN_API_KEY else []
-    log(f'🔑 使用单个Etherscan API密钥: {ETHERSCAN_API_KEY[:10]}...' if ETHERSCAN_API_KEY else '❌ API密钥未设置')
 
 API_URL_V2="https://api.etherscan.io/v2/api"
 
@@ -54,7 +48,7 @@ CHAINS_CONFIG = {
     },
     8453: {
         'name': 'Base Mainnet',
-            'api_url': API_URL_V2,
+        'api_url': API_URL_V2,
         'explorer_url': 'https://basescan.org',
         'enabled': True
     }
@@ -89,13 +83,9 @@ ETHERSCAN_API_URL = get_api_url(CHAIN_ID)
 
 # Webhook 配置
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
-log(f'🔗 Webhook URL: {WEBHOOK_URL}' if WEBHOOK_URL else '❌ Webhook URL未设置')
 
 PROXY_URL = 'http://host.docker.internal:7890' if os.getenv('IS_DOCKER') else 'http://localhost:7890'
 USE_PROXY = os.getenv('USE_PROXY', 'false').lower() == 'true'
-log(f'🌐 代理设置: {"启用" if USE_PROXY else "禁用"}')
-if PROXY_URL:
-    log(f'🌐 代理URL: {PROXY_URL}')
 
 # 监听配置 - 支持数组格式
 MONITOR_ADDRESSES_STR = os.getenv('MONITOR_ADDRESSES', '[]')
@@ -106,37 +96,22 @@ try:
 except json.JSONDecodeError:
     # 兼容字符串格式
     MONITOR_ADDRESSES = [addr.strip() for addr in MONITOR_ADDRESSES_STR.split(',') if addr.strip()]
-    log(f'⚠️ 使用逗号分隔的地址格式，建议使用JSON数组格式')
 except Exception as e:
-    log(f'❌ 解析监控地址配置失败: {e}')
     MONITOR_ADDRESSES = []
-
-# 输出监控地址配置
-log(f'📍 监控地址配置:')
-if MONITOR_ADDRESSES:
-    log(f'   共配置 {len(MONITOR_ADDRESSES)} 个地址:')
-    for i, addr in enumerate(MONITOR_ADDRESSES, 1):
-        log(f'   {i}. {addr}')
-else:
-    log('   ❌ 未配置监控地址')
 
 # 新代币数量阈值 (默认 1M = 1000000)
 NEW_TOKEN_AMOUNT_THRESHOLD = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD', '1000000'))
-log(f'💰 新代币数量阈值: {NEW_TOKEN_AMOUNT_THRESHOLD:,}')
 
-# 检查间隔 (秒) - 默认10分钟
-CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '600'))
-log(f'⏰ 检查间隔: {CHECK_INTERVAL} 秒 ({CHECK_INTERVAL // 60} 分钟)')
+# 检查间隔 (秒) - 默认15分钟
+CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '900'))
 
 # 时间窗口配置 (分钟) - 只检查最近N分钟内的交易
 TIME_WINDOW_MINUTES = int(os.getenv('TIME_WINDOW_MINUTES', '10'))
-log(f'⏰ 时间窗口: 最近 {TIME_WINDOW_MINUTES} 分钟')
 
 # API限制控制配置
-MIN_REQUEST_INTERVAL = float(os.getenv('MIN_REQUEST_INTERVAL', '0.5'))  # 最小请求间隔（秒）
+MIN_REQUEST_INTERVAL = float(os.getenv('MIN_REQUEST_INTERVAL', '1'))  # 最小请求间隔（秒）
 RATE_LIMIT_RETRY_DELAY = int(os.getenv('RATE_LIMIT_RETRY_DELAY', '5'))  # 遇到限制时的重试延迟（秒）
-MAX_RETRIES = int(os.getenv('MAX_RETRIES', '3'))  # 最大重试次数
-log(f'🔧 API限制控制: 最小间隔={MIN_REQUEST_INTERVAL}s, 重试延迟={RATE_LIMIT_RETRY_DELAY}s, 最大重试={MAX_RETRIES}次')
+MAX_RETRIES = int(os.getenv('MAX_RETRIES', '1'))  # 最大重试次数
 
 # 代币记录文件 - 按链ID分别存储
 def get_token_records_file(chain_id=None):
@@ -146,44 +121,12 @@ def get_token_records_file(chain_id=None):
     return f'token_records_chain_{chain_id}.json'
 
 TOKEN_RECORDS_FILE = get_token_records_file(CHAIN_ID)
-log(f'📁 代币记录文件: {TOKEN_RECORDS_FILE}')
-
-# 配置验证
-log('\n🔍 配置验证:')
-if not ETHERSCAN_API_KEYS:
-    log('❌ 错误: 未配置Etherscan API密钥，请在.env文件中设置ETHERSCAN_API_KEYS')
-if not MONITOR_ADDRESSES:
-    log('❌ 错误: 未配置监控地址，请在.env文件中设置MONITOR_ADDRESSES')
-if not WEBHOOK_URL:
-    log('⚠️ 警告: 未配置Webhook URL，告警消息将无法发送')
-# 警告仅使用默认Twitter API配置
-twitter_api_url = os.getenv('TWITTER_API_BASE_URL')
-if not twitter_api_url or twitter_api_url == 'http://127.0.0.1:8008':
-    log('⚠️ 警告: 未配置自定义Twitter API URL，使用默认配置')
-if ETHERSCAN_API_KEYS and MONITOR_ADDRESSES:
-    log('✅ 配置验证通过，可以启动监听器')
-
-# 输出链信息
-log(f'🔗 目标链: {CHAIN_NAME} (Chain ID: {CHAIN_ID})')
-log(f'🔗 API URL: {ETHERSCAN_API_URL}')
-log(f'🔗 Explorer URL: {get_explorer_url(CHAIN_ID)}')
-
-
 
 # Twitter API 配置
 TWITTER_API_BASE_URL = os.getenv('TWITTER_API_BASE_URL', 'http://127.0.0.1:8008')
 TWITTER_TWEET_ENDPOINT = os.getenv('TWITTER_TWEET_ENDPOINT', '/tweet')
 TWITTER_SEARCH_ENDPOINT = os.getenv('TWITTER_SEARCH_ENDPOINT', '/search/user_tweets')
 TWITTER_USERNAME = os.getenv('TWITTER_USERNAME', 'binance')
-
-# 确保API URL有值
-if TWITTER_API_BASE_URL is None:
-    TWITTER_API_BASE_URL = 'http://127.0.0.1:8008'
-log(f'🐦 Twitter API配置:')
-log(f'   API基础URL: {TWITTER_API_BASE_URL}')
-log(f'   发送推文端点: {TWITTER_TWEET_ENDPOINT}')
-log(f'   搜索推文端点: {TWITTER_SEARCH_ENDPOINT}')
-log(f'   搜索用户名: {TWITTER_USERNAME}')
 
 # Config 类 - 为了兼容其他模块的使用
 class Config:
@@ -196,8 +139,149 @@ class Config:
     TWITTER_SEARCH_ENDPOINT = TWITTER_SEARCH_ENDPOINT
     TWITTER_USERNAME = TWITTER_USERNAME
 
-# 输出支持的所有链
-log(f'\n🌐 支持的链配置:')
-for chain_id, config in CHAINS_CONFIG.items():
-    status = "✅ 启用" if config['enabled'] else "❌ 禁用"
-    log(f'{status} Chain ID {chain_id}: {config["name"]}') 
+# 将日志输出分组到不同的函数中
+def log_api_keys_config():
+    """输出API密钥配置相关的日志"""
+    if ETHERSCAN_API_KEYS_STR:
+        log(f'🔑 配置了 {len(ETHERSCAN_API_KEYS)} 个Etherscan API密钥')
+        for i, key in enumerate(ETHERSCAN_API_KEYS, 1):
+            log(f'  密钥 {i}: {key[:10]}...' if key else f'  密钥 {i}: 未设置')
+    else:
+        log(f'🔑 使用单个Etherscan API密钥: {ETHERSCAN_API_KEY[:10]}...' if ETHERSCAN_API_KEY else '❌ API密钥未设置')
+
+def log_proxy_config():
+    """输出代理配置相关的日志"""
+    log(f'🌐 代理设置: {"启用" if USE_PROXY else "禁用"}')
+    if PROXY_URL:
+        log(f'🌐 代理URL: {PROXY_URL}')
+
+def log_monitor_addresses():
+    """输出监控地址配置相关的日志"""
+    log(f'📍 监控地址配置:')
+    if MONITOR_ADDRESSES:
+        log(f'   共配置 {len(MONITOR_ADDRESSES)} 个地址:')
+        for i, addr in enumerate(MONITOR_ADDRESSES, 1):
+            log(f'   {i}. {addr}')
+    else:
+        log('   ❌ 未配置监控地址')
+
+def log_threshold_config():
+    """输出阈值配置相关的日志"""
+    log(f'💰 新代币数量阈值: {NEW_TOKEN_AMOUNT_THRESHOLD:,}')
+    log(f'⏰ 检查间隔: {CHECK_INTERVAL} 秒 ({CHECK_INTERVAL // 60} 分钟)')
+    log(f'⏰ 时间窗口: 最近 {TIME_WINDOW_MINUTES} 分钟')
+
+def log_api_limit_config():
+    """输出API限制控制配置相关的日志"""
+    log(f'🔧 API限制控制: 最小间隔={MIN_REQUEST_INTERVAL}s, 重试延迟={RATE_LIMIT_RETRY_DELAY}s, 最大重试={MAX_RETRIES}次')
+    log(f'📁 代币记录文件: {TOKEN_RECORDS_FILE}')
+
+def log_config_validation():
+    """输出配置验证相关的日志"""
+    log('\n🔍 配置验证:')
+    if not ETHERSCAN_API_KEYS:
+        log('❌ 错误: 未配置Etherscan API密钥，请在.env文件中设置ETHERSCAN_API_KEYS')
+    if not MONITOR_ADDRESSES:
+        log('❌ 错误: 未配置监控地址，请在.env文件中设置MONITOR_ADDRESSES')
+    if not WEBHOOK_URL:
+        log('⚠️ 警告: 未配置Webhook URL，告警消息将无法发送')
+    
+    # 警告仅使用默认Twitter API配置
+    twitter_api_url = os.getenv('TWITTER_API_BASE_URL')
+    if not twitter_api_url or twitter_api_url == 'http://127.0.0.1:8008':
+        log('⚠️ 警告: 未配置自定义Twitter API URL，使用默认配置')
+    if ETHERSCAN_API_KEYS and MONITOR_ADDRESSES:
+        log('✅ 配置验证通过，可以启动监听器')
+
+def log_chain_info():
+    """输出链信息相关的日志"""
+    log(f'🔗 目标链: {CHAIN_NAME} (Chain ID: {CHAIN_ID})')
+    log(f'🔗 API URL: {ETHERSCAN_API_URL}')
+    log(f'🔗 Explorer URL: {get_explorer_url(CHAIN_ID)}')
+
+def log_supported_chains():
+    """输出支持的所有链相关的日志"""
+    log(f'\n🌐 支持的链配置:')
+    for chain_id, config in CHAINS_CONFIG.items():
+        status = "✅ 启用" if config['enabled'] else "❌ 禁用"
+        log(f'{status} Chain ID {chain_id}: {config["name"]}')
+
+def log_all_config():
+    """输出所有配置相关的日志"""
+    global _config_logged
+    if _config_logged:
+        return
+    
+    # 输出基本配置信息
+    log_api_keys_config()
+    log_proxy_config()
+    log_chain_info()
+    
+    # 先测试Twitter API端点连接
+    test_twitter_api_endpoint()
+    
+    # 输出其他配置信息
+    log_monitor_addresses()
+    log_threshold_config()
+    log_api_limit_config()
+    log_config_validation()
+    log_supported_chains()
+    
+    _config_logged = True
+
+def test_twitter_api_endpoint():
+    """测试Twitter API端点连接"""
+    try:
+        log(f"🔍 测试连接Twitter API端点: {TWITTER_API_BASE_URL}")
+        
+        # 设置代理（如果启用）
+        proxies = None
+        if USE_PROXY and PROXY_URL:
+            proxies = {
+                "http": PROXY_URL,
+                "https": PROXY_URL
+            }
+        
+        # 设置超时
+        timeout = 10
+        
+        # 请求头
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        # 发送请求
+        response = requests.get(
+            TWITTER_API_BASE_URL, 
+            proxies=proxies, 
+            timeout=timeout,
+            headers=headers
+        )
+        
+        # 输出结果
+        log(f"✅ Twitter API连接成功: 状态码 {response.status_code}")
+        
+        # 尝试解析JSON响应
+        try:
+            json_response = response.json()
+            log(f"📄 Twitter API响应: {json.dumps(json_response, ensure_ascii=False)[:100]}..." 
+                if len(json.dumps(json_response, ensure_ascii=False)) > 100 
+                else f"📄 Twitter API响应: {json.dumps(json_response, ensure_ascii=False)}")
+        except:
+            # 如果不是JSON格式，输出文本
+            log(f"📄 Twitter API响应内容: {response.text[:100]}..." 
+                if len(response.text) > 100 
+                else f"📄 Twitter API响应内容: {response.text}")
+        
+        # 检查其他端点
+        log(f"🔍 Twitter API可用端点:")
+        log(f"  - 推文端点: {TWITTER_API_BASE_URL}{TWITTER_TWEET_ENDPOINT}")
+        log(f"  - 搜索端点: {TWITTER_API_BASE_URL}{TWITTER_SEARCH_ENDPOINT}")
+        log(f"  - 默认用户: {TWITTER_USERNAME}")
+        
+        return response
+    except Exception as e:
+        log(f"❌ Twitter API连接失败: {str(e)}")
+        if USE_PROXY:
+            log(f"⚠️ 请检查代理设置是否正确: {PROXY_URL}")
+        return None 

@@ -5,6 +5,7 @@ ENV PYTHONUNBUFFERED=1
 # 设置构建时的代理环境变量
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
+ARG TWITTER_API_BASE_URL
 
 WORKDIR /app
 
@@ -18,6 +19,7 @@ COPY . .
 # 设置运行时的代理环境变量
 ENV HTTP_PROXY=${HTTP_PROXY:-""}
 ENV HTTPS_PROXY=${HTTPS_PROXY:-""}
+ENV TWITTER_API_BASE_URL=${TWITTER_API_BASE_URL:-""}
 
 # 运行程序
 CMD ["python3", "-u", "main.py"] 

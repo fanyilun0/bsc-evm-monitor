@@ -12,10 +12,7 @@ from datetime import datetime, timedelta
 class EVMLogger:
     """EVM监控器日志管理类"""
     
-    def __init__(self, env='dev'):
-        self.env = env.lower()
-        self.is_dev = self.env == 'dev'
-        self.is_prod = self.env == 'prod'
+    def __init__(self):
         self.logger = None
         self.setup_logging()
     
@@ -90,29 +87,11 @@ class EVMLogger:
         # 添加处理器
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
+        self.logger.propagate = False
     
-    def log(self, message, level='INFO', show_in_prod=True):
-        """统一的日志函数，支持时间戳和环境控制"""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        env_prefix = f"[{self.env.upper()}]"
-        log_message = f"{timestamp} {env_prefix} [{level}] {message}"
-        
-        # 在prod环境下，只显示标记为show_in_prod的日志
-        if self.is_prod and not show_in_prod:
-            return
-        
-        # 根据级别记录日志
-        if level == 'ERROR':
-            self.logger.error(log_message)
-        elif level == 'WARNING':
-            self.logger.warning(log_message)
-        elif level == 'DEBUG':
-            self.logger.debug(log_message)
-        else:
-            self.logger.info(log_message)
-        
-        # 同时输出到控制台（保持原有行为）
-        print(log_message)
+    def log(self, message):
+        """统一的日志函数，使用标准格式"""
+        self.logger.info(message)
     
     def get_log_file_path(self):
         """获取当前日志文件路径"""
@@ -125,16 +104,16 @@ class EVMLogger:
 # 全局日志实例
 _evm_logger = None
 
-def get_logger(env='dev'):
+def get_logger():
     """获取全局日志实例"""
     global _evm_logger
     if _evm_logger is None:
-        _evm_logger = EVMLogger(env)
+        _evm_logger = EVMLogger()
     return _evm_logger
 
-def log(message, level='INFO', show_in_prod=True):
+def log(message):
     """全局日志函数"""
     global _evm_logger
     if _evm_logger is None:
         _evm_logger = EVMLogger()
-    _evm_logger.log(message, level, show_in_prod) 
+    _evm_logger.log(message) 

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from config import (
     ETHERSCAN_API_KEYS, MONITOR_ADDRESSES,
     NEW_TOKEN_AMOUNT_THRESHOLD, CHECK_INTERVAL, 
-    PROXY_URL, USE_PROXY, IS_DEV, CHAIN_ID,
+    PROXY_URL, USE_PROXY, CHAIN_ID,
     CHAINS_CONFIG, get_api_url, get_explorer_url, get_chain_name, get_token_records_file,
     MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES
 )
@@ -204,11 +204,10 @@ class NewTokenMonitor:
         action = params.get('action', 'unknown')
         chain_id = params.get('chainid', self.chain_id)
         
-        if IS_DEV:
-            log(f"🔗 请求URL: {self.api_url}")
-            log(f"📋 请求参数: {params}")
-            log(f"🔑 使用API密钥: {current_key[:10]}...")
-            log(f"🌐 Etherscan API调用: module={module}, action={action}, chain_id={chain_id}")
+        log(f"🔗 请求URL: {self.api_url}")
+        log(f"📋 请求参数: {params}")
+        log(f"🔑 使用API密钥: {current_key[:10]}...")
+        log(f"🌐 Etherscan API调用: module={module}, action={action}, chain_id={chain_id}")
         
         try:
             async with self.session.get(self.api_url, params=params, proxy=self.proxy, timeout=30) as response:
@@ -245,15 +244,13 @@ class NewTokenMonitor:
                 else:
                     response_text = await response.text()
                     log(f"❌ API响应状态码错误: {response.status} (module={module}, action={action})")
-                    if IS_DEV:
-                        log(f"❌ 错误响应内容: {response_text}")
+                    log(f"❌ 错误响应内容: {response_text}")
                     return None
                     
         except Exception as e:
             log(f"❌ API请求失败: {e} (module={module}, action={action})")
-            if IS_DEV:
-                import traceback
-                traceback.print_exc()
+            import traceback
+            traceback.print_exc()
             return None
 
     async def get_block_by_timestamp(self, timestamp):
@@ -590,15 +587,7 @@ class NewTokenMonitor:
     
     async def run_monitor(self):
         """运行监听器"""
-        log(f"🚀 开始监听 {len(MONITOR_ADDRESSES)} 个地址的新代币...")
-        log(f"🔗 链: {self.chain_name} (ID: {self.chain_id})")
-        log(f"📍 监听地址配置:")
-        for i, addr in enumerate(MONITOR_ADDRESSES, 1):
-            log(f"   {i}. {addr}")
-        log(f"💰 新代币阈值: {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
-        log(f"⏰ 检查间隔: {CHECK_INTERVAL // 60} 分钟")
-        log(f"⏰ 时间窗口: 最近 {self.time_window_minutes} 分钟")
-        log(f"🔑 API密钥数量: {len(self.api_keys)}")
+        log(f"🚀 开始监听 {len(MONITOR_ADDRESSES)} 个地址的新代币... (链: {self.chain_name})")
         log("-" * 80)
         
         async with aiohttp.ClientSession() as session:
@@ -670,14 +659,11 @@ class MultiChainMonitor:
                 self.enabled_chains.append(chain_id)
                 self.monitors[chain_id] = NewTokenMonitor(chain_id)
         
-        log(f"🌐 多链监听器初始化完成，启用链: {len(self.enabled_chains)} 个")
-        for chain_id in self.enabled_chains:
-            chain_name = get_chain_name(chain_id)
-            log(f"   - {chain_name} (ID: {chain_id})")
+        # 初始化完成，不输出日志，避免重复
     
     async def run_all_monitors(self):
         """运行所有链的监听器"""
-        log(f"🚀 启动多链监听器...")
+        log(f"🚀 启动多链监听器... (共 {len(self.enabled_chains)} 条链)")
         
         if not self.enabled_chains:
             log("❌ 错误: 没有启用的链")
@@ -702,11 +688,16 @@ def main():
     """主函数"""
     # 显示日志文件位置
     from logger import get_logger
+    from config import log_all_config
+    
     evm_logger = get_logger()
     log_filename = evm_logger.get_log_file_path()
     log(f"📝 日志文件位置: {os.path.abspath(log_filename)}")
     
     log("🚀 启动 Etherscan V2 API 新代币监听器...")
+    
+    # 输出配置信息（包括测试Twitter API连接和验证API密钥）
+    log_all_config()
     
     # 获取启用的链
     enabled_chains = [chain_id for chain_id, config in CHAINS_CONFIG.items() if config['enabled']]
@@ -715,10 +706,7 @@ def main():
         log("❌ 错误: 没有启用的链，请在 config.py 中启用至少一个链")
         return
     
-    for chain_id in enabled_chains:
-        chain_name = get_chain_name(chain_id)
-        log(f"   - {chain_name} (ID: {chain_id})")
-    
+    # 创建并运行监听器
     monitor = MultiChainMonitor()
     asyncio.run(monitor.run_all_monitors())
 
