@@ -156,6 +156,10 @@ if not MONITOR_ADDRESSES:
     log('❌ 错误: 未配置监控地址，请在.env文件中设置MONITOR_ADDRESSES')
 if not WEBHOOK_URL:
     log('⚠️ 警告: 未配置Webhook URL，告警消息将无法发送')
+# 警告仅使用默认Twitter API配置
+twitter_api_url = os.getenv('TWITTER_API_BASE_URL')
+if not twitter_api_url or twitter_api_url == 'http://127.0.0.1:8008':
+    log('⚠️ 警告: 未配置自定义Twitter API URL，使用默认配置')
 if ETHERSCAN_API_KEYS and MONITOR_ADDRESSES:
     log('✅ 配置验证通过，可以启动监听器')
 
@@ -164,30 +168,33 @@ log(f'🔗 目标链: {CHAIN_NAME} (Chain ID: {CHAIN_ID})')
 log(f'🔗 API URL: {ETHERSCAN_API_URL}')
 log(f'🔗 Explorer URL: {get_explorer_url(CHAIN_ID)}')
 
-# Redis 配置
-REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
-REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
-REDIS_DB = int(os.getenv('REDIS_DB', '0'))
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
-TWEET_QUEUE_NAME = os.getenv('TWEET_QUEUE_NAME', 'tweet_queue')
 
-log(f'📦 Redis 配置:')
-log(f'   主机: {REDIS_HOST}:{REDIS_PORT}')
-log(f'   数据库: {REDIS_DB}')
-log(f'   密码: {"已设置" if REDIS_PASSWORD else "未设置"}')
-log(f'   推文队列: {TWEET_QUEUE_NAME}')
+
+# Twitter API 配置
+TWITTER_API_BASE_URL = os.getenv('TWITTER_API_BASE_URL', 'http://127.0.0.1:8008')
+TWITTER_TWEET_ENDPOINT = os.getenv('TWITTER_TWEET_ENDPOINT', '/tweet')
+TWITTER_SEARCH_ENDPOINT = os.getenv('TWITTER_SEARCH_ENDPOINT', '/search/user_tweets')
+TWITTER_USERNAME = os.getenv('TWITTER_USERNAME', 'binance')
+
+# 确保API URL有值
+if TWITTER_API_BASE_URL is None:
+    TWITTER_API_BASE_URL = 'http://127.0.0.1:8008'
+log(f'🐦 Twitter API配置:')
+log(f'   API基础URL: {TWITTER_API_BASE_URL}')
+log(f'   发送推文端点: {TWITTER_TWEET_ENDPOINT}')
+log(f'   搜索推文端点: {TWITTER_SEARCH_ENDPOINT}')
+log(f'   搜索用户名: {TWITTER_USERNAME}')
 
 # Config 类 - 为了兼容其他模块的使用
 class Config:
     # 日志配置
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     
-    # Redis 配置
-    REDIS_HOST = REDIS_HOST
-    REDIS_PORT = REDIS_PORT
-    REDIS_DB = REDIS_DB
-    REDIS_PASSWORD = REDIS_PASSWORD
-    TWEET_QUEUE_NAME = TWEET_QUEUE_NAME
+    # Twitter API 配置
+    TWITTER_API_BASE_URL = TWITTER_API_BASE_URL
+    TWITTER_TWEET_ENDPOINT = TWITTER_TWEET_ENDPOINT
+    TWITTER_SEARCH_ENDPOINT = TWITTER_SEARCH_ENDPOINT
+    TWITTER_USERNAME = TWITTER_USERNAME
 
 # 输出支持的所有链
 log(f'\n🌐 支持的链配置:')

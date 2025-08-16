@@ -9,13 +9,14 @@ from config import (
     NEW_TOKEN_AMOUNT_THRESHOLD, CHECK_INTERVAL, 
     PROXY_URL, USE_PROXY, IS_DEV, CHAIN_ID,
     CHAINS_CONFIG, get_api_url, get_explorer_url, get_chain_name, get_token_records_file,
-    MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES,
-    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD, TWEET_QUEUE_NAME
+    MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES
 )
 from logger import log
 from webhook import send_message_async
 import os
-import redis
+
+import json
+from twitter_api import process_token_event
 
 class NewTokenMonitor:
     def __init__(self, chain_id=None):
@@ -40,33 +41,10 @@ class NewTokenMonitor:
         # 时间窗口配置（分钟）
         self.time_window_minutes = TIME_WINDOW_MINUTES
         
-        # 初始化 Redis 连接
-        self.redis_client = None
-        self.init_redis()
-        
         log(f"🔗 初始化监听器 - 链: {self.chain_name} (ID: {self.chain_id})")
         log(f"🔗 API URL: {self.api_url}")
         log(f"🔗 Explorer URL: {self.explorer_url}")
         log(f"⏰ 时间窗口: 最近 {self.time_window_minutes} 分钟")
-    
-    def init_redis(self):
-        """初始化 Redis 连接"""
-        try:
-            redis_config = {
-                'host': REDIS_HOST,
-                'port': REDIS_PORT,
-                'db': REDIS_DB,
-                'decode_responses': True,
-            }
-            if REDIS_PASSWORD:
-                redis_config['password'] = REDIS_PASSWORD
-            
-            self.redis_client = redis.Redis(**redis_config)
-            self.redis_client.ping()
-            log(f"📦 Redis 连接成功: {REDIS_HOST}:{REDIS_PORT}")
-        except Exception as e:
-            log(f"❌ Redis 连接失败: {e}")
-            self.redis_client = None
     
     def generate_alpha_event(self, qualified_token):
         """生成符合 alpha.json 格式的事件数据"""
@@ -108,31 +86,35 @@ class NewTokenMonitor:
             log(f"❌ 生成 Alpha 事件失败: {e}")
             return None
     
-    def push_alpha_event_to_redis(self, qualified_token):
-        """将符合条件的代币事件推送到 Redis 队列"""
-        if not self.redis_client:
-            log("⚠️ Redis 未连接，跳过事件推送")
-            return False
-        
+    async def process_alpha_event(self, qualified_token):
+        """处理符合条件的代币事件（调用Twitter API）"""
         try:
             # 生成 alpha 事件数据
             alpha_event = self.generate_alpha_event(qualified_token)
             if not alpha_event:
+                log("❌ 生成 Alpha 事件失败")
                 return False
             
-            # 推送到 Redis 队列
-            self.redis_client.lpush(TWEET_QUEUE_NAME, json.dumps(alpha_event, ensure_ascii=False))
-            
-            log(f"🚀 Alpha 事件已推送到队列 {TWEET_QUEUE_NAME}:")
+            log(f"🚀 开始处理 Alpha 事件:")
             log(f"   代币: {alpha_event['name']} ({alpha_event['symbol']})")
             log(f"   数量: {alpha_event['amount']}")
             log(f"   地址: {alpha_event['address']}")
             log(f"   合约: {alpha_event['contract']}")
             
-            return True
+            # 使用Twitter API处理事件
+            success = await process_token_event(alpha_event)
+            
+            if success:
+                log(f"✅ Alpha 事件处理成功，已发送推文")
+            else:
+                log(f"⚠️ Alpha 事件处理失败或未找到相关推文")
+            
+            return success
         except Exception as e:
-            log(f"❌ 推送 Alpha 事件到 Redis 失败: {e}")
+            log(f"❌ 处理 Alpha 事件失败: {e}")
             return False
+    
+
         
     def load_token_records(self):
         """加载代币记录 - 新格式，按链ID分别存储"""
@@ -531,8 +513,8 @@ class NewTokenMonitor:
                         }
                         qualified_tokens.append(qualified_token)
                         
-                        # 推送 Alpha 事件到 Redis 队列
-                        self.push_alpha_event_to_redis(qualified_token)
+                        # 处理 Alpha 事件
+                        await self.process_alpha_event(qualified_token)
                     else:
                         log(f"📉 新代币数量 {formatted_amount} 未达到阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
                 else:

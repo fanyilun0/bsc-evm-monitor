@@ -1,0 +1,11 @@
+🚨 监测到币安Alpha分发钱包收到新代币！
+
+📍 地址: {address}
+🆕 代币: {name} (${symbol})
+📦 数量: {amount}
+📜 合约: {contract}
+⛓️ 链: {chain}
+🔎 浏览器: {explorer}
+
+⚠️ 首次出现上述代币，请注意风险！
+#BinanceAlpha #Airdrop #Wallet
