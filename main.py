@@ -588,23 +588,10 @@ class NewTokenMonitor:
     async def run_monitor(self):
         """运行监听器"""
         log(f"🚀 开始监听 {len(MONITOR_ADDRESSES)} 个地址的新代币... (链: {self.chain_name})")
-        log("-" * 80)
         
         async with aiohttp.ClientSession() as session:
             self.session = session
             
-            # 验证基本配置
-            if not self.api_keys:
-                log("❌ 错误: 请在 .env 文件中设置ETHERSCAN_API_KEY或ETHERSCAN_API_KEYS")
-                return
-            
-            if not MONITOR_ADDRESSES:
-                log("❌ 错误: 请在 .env 文件中设置 MONITOR_ADDRESSES")
-                return
-
-            # 跳过API密钥有效性检测，直接开始监听
-            log("📋 跳过API密钥有效性检测，直接开始监听...")
-
             while True:
                 try:
                     log(f"\n🔍 开始检查... ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
@@ -687,15 +674,8 @@ class MultiChainMonitor:
 def main():
     """主函数"""
     # 显示日志文件位置
-    from logger import get_logger
     from config import log_all_config
-    
-    evm_logger = get_logger()
-    log_filename = evm_logger.get_log_file_path()
-    log(f"📝 日志文件位置: {os.path.abspath(log_filename)}")
-    
-    log("🚀 启动 Etherscan V2 API 新代币监听器...")
-    
+
     # 输出配置信息（包括测试Twitter API连接和验证API密钥）
     log_all_config()
     

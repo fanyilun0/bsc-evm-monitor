@@ -1,8 +1,7 @@
 import os
 import json
 from dotenv import load_dotenv
-from datetime import datetime
-from logger import log, get_logger
+from logger import log
 import requests
 
 # 是否已经输出过配置日志
@@ -10,9 +9,6 @@ _config_logged = False
 
 # 加载环境变量
 load_dotenv(override=True)
-
-# 初始化日志记录器
-logger = get_logger()
 
 # Etherscan V2 API 配置 - 支持多个API密钥
 ETHERSCAN_API_KEYS_STR = os.getenv('ETHERSCAN_API_KEYS', '')
@@ -178,7 +174,6 @@ def log_api_limit_config():
 
 def log_config_validation():
     """输出配置验证相关的日志"""
-    log('\n🔍 配置验证:')
     if not ETHERSCAN_API_KEYS:
         log('❌ 错误: 未配置Etherscan API密钥，请在.env文件中设置ETHERSCAN_API_KEYS')
     if not MONITOR_ADDRESSES:
@@ -201,7 +196,7 @@ def log_chain_info():
 
 def log_supported_chains():
     """输出支持的所有链相关的日志"""
-    log(f'\n🌐 支持的链配置:')
+    log(f'🌐 支持的链配置:')
     for chain_id, config in CHAINS_CONFIG.items():
         status = "✅ 启用" if config['enabled'] else "❌ 禁用"
         log(f'{status} Chain ID {chain_id}: {config["name"]}')
