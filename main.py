@@ -197,48 +197,60 @@ class NewTokenMonitor:
             log("❌ 没有可用的API密钥")
             return None
         
-        params['apikey'] = current_key
+        # 清理参数中的None值
+        clean_params = {}
+        for key, value in params.items():
+            if value is not None:
+                clean_params[key] = value
+        
+        clean_params['apikey'] = current_key
         
         # 提取API调用信息用于日志
-        module = params.get('module', 'unknown')
-        action = params.get('action', 'unknown')
-        chain_id = params.get('chainid', self.chain_id)
+        module = clean_params.get('module', 'unknown')
+        action = clean_params.get('action', 'unknown')
+        chain_id = clean_params.get('chainid', self.chain_id)
         
         log(f"🔗 请求URL: {self.api_url}")
-        log(f"📋 请求参数: {params}")
+        log(f"📋 请求参数: {clean_params}")
         log(f"🔑 使用API密钥: {current_key[:10]}...")
         log(f"🌐 Etherscan API调用: module={module}, action={action}, chain_id={chain_id}")
         
         try:
-            async with self.session.get(self.api_url, params=params, proxy=self.proxy, timeout=30) as response:
+            async with self.session.get(self.api_url, params=clean_params, proxy=self.proxy, timeout=30) as response:
                 if response.status == 200:
                     data = await response.json()
                     
-                    # 检查API限制
-                    if data.get('status') == '0' and 'rate limit' in data.get('result', '').lower():
-                        log(f"⚠️ 遇到API限制: {data.get('result')} (module={module}, action={action})")
+                    # 检查API限制和错误
+                    if data.get('status') == '0':
+                        result = data.get('result', '')
                         
-                        if retry_count < self.max_retries:
-                            log(f"🔄 等待 {self.rate_limit_retry_delay} 秒后重试...")
-                            await asyncio.sleep(self.rate_limit_retry_delay)
+                        # 检查result是否为字符串类型
+                        if isinstance(result, str):
+                            # 检查API限制
+                            if 'rate limit' in result.lower():
+                                log(f"⚠️ 遇到API限制: {result} (module={module}, action={action})")
+                                
+                                if retry_count < self.max_retries:
+                                    log(f"🔄 等待 {self.rate_limit_retry_delay} 秒后重试...")
+                                    await asyncio.sleep(self.rate_limit_retry_delay)
+                                    
+                                    # 增加重试延迟
+                                    self.rate_limit_retry_delay = min(self.rate_limit_retry_delay * 2, 30)
+                                    
+                                    return await self.make_api_request(params, retry_count + 1)
+                                else:
+                                    log(f"❌ 达到最大重试次数，API请求失败 (module={module}, action={action})")
+                                    return None
                             
-                            # 增加重试延迟
-                            self.rate_limit_retry_delay = min(self.rate_limit_retry_delay * 2, 30)
-                            
-                            return await self.make_api_request(params, retry_count + 1)
-                        else:
-                            log(f"❌ 达到最大重试次数，API请求失败 (module={module}, action={action})")
-                            return None
-                    
-                    # 检查API密钥无效
-                    if data.get('status') == '0' and 'invalid api key' in data.get('result', '').lower():
-                        log(f"⚠️ API密钥无效: {data.get('result')} (module={module}, action={action})")
-                        if retry_count < self.max_retries:
-                            log(f"🔄 重试使用不同的API密钥...")
-                            return await self.make_api_request(params, retry_count + 1)
-                        else:
-                            log(f"❌ 所有API密钥尝试失败 (module={module}, action={action})")
-                            return None
+                            # 检查API密钥无效 - 增加更多匹配模式
+                            elif any(error_text in result.lower() for error_text in ['invalid api key', 'api key', '#err2']):
+                                log(f"⚠️ API密钥无效: {result} (module={module}, action={action})")
+                                if retry_count < self.max_retries:
+                                    log(f"🔄 重试使用不同的API密钥...")
+                                    return await self.make_api_request(params, retry_count + 1)
+                                else:
+                                    log(f"❌ 所有API密钥尝试失败 (module={module}, action={action})")
+                                    return None
                     
                     return data
                 else:
@@ -247,6 +259,20 @@ class NewTokenMonitor:
                     log(f"❌ 错误响应内容: {response_text}")
                     return None
                     
+        except asyncio.TimeoutError:
+            log(f"❌ API请求超时 (module={module}, action={action})")
+            if retry_count < self.max_retries:
+                log(f"🔄 超时后重试...")
+                await asyncio.sleep(2)
+                return await self.make_api_request(params, retry_count + 1)
+            return None
+        except aiohttp.ClientConnectorError as e:
+            log(f"❌ 连接错误: {e} (module={module}, action={action})")
+            if retry_count < self.max_retries:
+                log(f"🔄 连接错误后重试...")
+                await asyncio.sleep(5)
+                return await self.make_api_request(params, retry_count + 1)
+            return None
         except Exception as e:
             log(f"❌ API请求失败: {e} (module={module}, action={action})")
             import traceback
@@ -319,6 +345,12 @@ class NewTokenMonitor:
         
         # 获取时间范围对应的区块范围
         start_block = await self.estimate_block_by_time(minutes_ago)
+        # 如果获取区块失败，使用默认值
+        if start_block is None:
+            log(f"⚠️ 无法获取起始区块，使用默认值")
+            # 使用一个较早的区块号作为默认值
+            start_block = 0
+        
         latest_block = 99999999999
         
         params = {
@@ -477,7 +509,7 @@ class NewTokenMonitor:
             log(f"❌ 比较代币时出错: {e}")
             log(f"🔍 最近活动代币数据: {recent_tokens}")
         
-        log(f"📊 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，上次记录 {len(previous_tokens)} 个，新代币 {len(new_tokens)} 个")
+        log(f"🎯 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，上次记录 {len(previous_tokens)} 个，新代币 {len(new_tokens)} 个")
         
         # 获取新代币的余额
         qualified_tokens = []
