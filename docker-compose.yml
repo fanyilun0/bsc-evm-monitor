@@ -13,7 +13,7 @@ services:
         target: /app
     environment:
       - TZ=Asia/Shanghai
-      - ENV=prod
+      - ENV=dev  # 改为开发环境
       - IS_DOCKER=true
       - HTTP_PROXY=http://host.docker.internal:7890
       - HTTPS_PROXY=http://host.docker.internal:7890
@@ -23,4 +23,4 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     shm_size: '0.5gb'
-    restart: always
+    restart: "no" 

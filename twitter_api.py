@@ -11,6 +11,7 @@ from config import (
     PROXY_URL, 
     USE_PROXY
 )
+from webhook import send_message_async
 
 async def send_tweet(content, in_reply_to_tweet_id=None, retry_count=0, max_retries=3):
     """发送推文
@@ -41,6 +42,12 @@ async def send_tweet(content, in_reply_to_tweet_id=None, retry_count=0, max_retr
     log(f"🐦 发送推文: {content[:30]}..." if len(content) > 30 else f"🐦 发送推文: {content}")
     if in_reply_to_tweet_id:
         log(f"🔄 回复推文ID: {in_reply_to_tweet_id}")
+    
+    # 同时将推文内容推送到webhook
+    webhook_message = f"🐦 Twitter发送的推文内容:\n\n{content}"
+    if in_reply_to_tweet_id:
+        webhook_message += f"\n\n🔄 回复推文ID: {in_reply_to_tweet_id}"
+    await send_message_async(webhook_message)
     
     try:
         timeout = aiohttp.ClientTimeout(total=10)  # 10秒超时
