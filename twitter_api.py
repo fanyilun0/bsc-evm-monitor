@@ -209,6 +209,8 @@ async def process_token_event(token_info):
         
         # 对每条找到的推文发送回复
         for tweet in tweets:
+            send_message_async(f"🔍 搜索到推文: {tweet}")
+
             tweet_id = tweet.get('id')
             if tweet_id:
                 # 发送回复
