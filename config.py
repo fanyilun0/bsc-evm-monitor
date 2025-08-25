@@ -99,7 +99,7 @@ except Exception as e:
 NEW_TOKEN_AMOUNT_THRESHOLD = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD', '1000000'))
 
 # 检查间隔 (秒) - 默认15分钟
-CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '900'))
+CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '120'))
 
 # 时间窗口配置 (分钟) - 只检查最近N分钟内的交易
 TIME_WINDOW_MINUTES = int(os.getenv('TIME_WINDOW_MINUTES', '10'))
