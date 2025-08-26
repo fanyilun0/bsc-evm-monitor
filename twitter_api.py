@@ -110,14 +110,7 @@ async def search_user_tweets(username, keywords, max_results=10, retry_count=0, 
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(endpoint, params=params, headers=headers, proxy=proxy) as response:
                 if response.status == 200:
-                    tweets = await response.json()
-                    log(f"✅ 搜索成功: 找到 {len(tweets)} 条推文")
-
-                    for tweet in tweets:
-                        webhook_message = f"🐦 Twitter搜索到的推文内容:\n\n{tweet}"
-                        send_message_async(webhook_message)
-
-                    return tweets
+                    return await response.json()
 
                 else:
                     error_text = await response.text()
@@ -199,6 +192,8 @@ async def process_token_event(token_info):
             result = await send_tweet(tweet_content)
             return result is not None
         
+        await send_message_async(f"🔍 搜索到推文: {tweets[0].get('text')}")
+
         # 构建推文内容
         tweet_content = generate_token_tweet(token_info)
         success_count = 0
@@ -210,7 +205,6 @@ async def process_token_event(token_info):
         
         # 对每条找到的推文发送回复
         for tweet in tweets:
-            send_message_async(f"🔍 搜索到推文: {tweet}")
 
             tweet_id = tweet.get('id')
             if tweet_id:
