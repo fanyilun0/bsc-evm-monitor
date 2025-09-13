@@ -136,14 +136,14 @@ class NewTokenMonitor:
                         data[address] = []
                         continue
                     
-                    # 验证每个代币对象
+                    # 验证每个代币对象并确保合约地址格式统一
                     valid_tokens = []
                     for token in tokens:
                         if isinstance(token, dict) and 'contract' in token:
-                            # 确保所有必需字段都存在
+                            # 确保所有必需字段都存在，并统一合约地址为小写
                             token_obj = {
                                 'token': token.get('token', 'Unknown'),
-                                'contract': token['contract'],
+                                'contract': token['contract'].lower(),  # 统一为小写
                                 'number': token.get('number', 0)
                             }
                             valid_tokens.append(token_obj)
@@ -486,33 +486,42 @@ class NewTokenMonitor:
         previous_tokens = self.token_records.get(address, [])
         log(f"🔍 上次记录代币数据类型: {type(previous_tokens)}, 长度: {len(previous_tokens)}")
         
-        # 提取上次记录的合约地址集合
+        # 提取上次记录的合约地址集合 - 确保地址统一为小写
         try:
-            previous_contracts = {token['contract'] for token in previous_tokens}
+            previous_contracts = {token['contract'].lower() for token in previous_tokens if isinstance(token, dict) and 'contract' in token}
             log(f"🔍 上次记录合约地址集合: {len(previous_contracts)} 个")
+            if previous_contracts:
+                log(f"🔍 已记录的合约地址样本: {list(previous_contracts)[:3]}{'...' if len(previous_contracts) > 3 else ''}")
         except Exception as e:
             log(f"❌ 创建合约地址集合失败: {e}")
             log(f"🔍 上次记录代币数据: {previous_tokens}")
             previous_contracts = set()
         
-        # 找出新代币（比较合约地址）- 只考虑最近有活动的代币
+        # 找出新代币（比较合约地址）- 只考虑最近有活动但未在缓存中的代币
         new_tokens = []
+        filtered_tokens = []
         try:
             for token in recent_tokens:
                 if isinstance(token, dict) and 'contract' in token:
-                    if token['contract'] not in previous_contracts:
+                    contract_addr = token['contract'].lower()
+                    if contract_addr not in previous_contracts:
                         new_tokens.append(token)
-                        log(f"🆕 发现新代币: {token.get('token', 'Unknown')} - {token['contract']}")
+                        log(f"🆕 发现新代币: {token.get('token', 'Unknown')} - {contract_addr}")
+                    else:
+                        filtered_tokens.append(token)
+                        log(f"🔄 已知代币(跳过): {token.get('token', 'Unknown')} - {contract_addr}")
                 else:
                     log(f"⚠️ 跳过无效的代币数据: {token}")
         except Exception as e:
             log(f"❌ 比较代币时出错: {e}")
             log(f"🔍 最近活动代币数据: {recent_tokens}")
         
-        log(f"🎯 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，上次记录 {len(previous_tokens)} 个，新代币 {len(new_tokens)} 个")
+        log(f"🎯 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，上次记录 {len(previous_tokens)} 个，新代币 {len(new_tokens)} 个，已知代币 {len(filtered_tokens)} 个")
         
-        # 获取新代币的余额
+        # 获取新代币的余额并检查是否符合条件
         qualified_tokens = []
+        actually_new_tokens = []  # 只记录真正需要添加到缓存的代币
+        
         for token in new_tokens:
             try:
                 # 获取余额
@@ -529,7 +538,15 @@ class NewTokenMonitor:
                     
                     log(f"🆕 新代币: {token['token']} - 数量: {formatted_amount}")
                     
-                    # 判断是否超过阈值
+                    # 将该代币记录为需要添加到缓存的代币（无论是否超过阈值）
+                    clean_token = {
+                        'token': token['token'],
+                        'contract': token['contract'].lower(),
+                        'number': balance
+                    }
+                    actually_new_tokens.append(clean_token)
+                    
+                    # 判断是否超过阈值（用于报警）
                     if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD:
                         log(f"✅ 新代币 {token_symbol} 数量 {formatted_amount} 超过阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
                         qualified_token = {
@@ -547,23 +564,31 @@ class NewTokenMonitor:
                     else:
                         log(f"📉 新代币数量 {formatted_amount} 未达到阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
                 else:
-                    log(f"⚪ 新代币 {token['contract'][:10]}... 余额为 0，跳过")
+                    log(f"⚪ 新代币 {token['contract'][:10]}... 余额为 0，但仍记录到缓存以避免重复检查")
+                    # 即使余额为0，也要记录到缓存中，避免下次重复检查
+                    clean_token = {
+                        'token': token.get('token', 'Unknown'),
+                        'contract': token['contract'].lower(),
+                        'number': 0
+                    }
+                    actually_new_tokens.append(clean_token)
             except Exception as e:
                 log(f"❌ 处理新代币失败: {e}")
         
-        # 更新记录（将新代币添加到记录中）
+        # 更新记录（只添加真正的新代币到记录中）
         try:
-            # 只添加真正的新代币到记录中
-            for token in new_tokens:
-                # 移除临时标记字段
-                clean_token = {
-                    'token': token.get('token', 'Unknown'),
-                    'contract': token['contract'],
-                    'number': token.get('number', 0)
-                }
-                previous_tokens.append(clean_token)
-            
-            self.token_records[address] = previous_tokens
+            if actually_new_tokens:
+                # 获取当前缓存
+                current_tokens = self.token_records.get(address, [])
+                
+                # 添加新发现的代币
+                current_tokens.extend(actually_new_tokens)
+                
+                # 更新缓存
+                self.token_records[address] = current_tokens
+                log(f"📝 更新缓存: 地址 {address} 新增 {len(actually_new_tokens)} 个代币记录")
+            else:
+                log(f"📝 无新代币需要添加到缓存")
         except Exception as e:
             log(f"❌ 更新代币记录失败: {e}")
         
