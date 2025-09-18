@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timedelta
 from config import (
     ETHERSCAN_API_KEYS, MONITOR_ADDRESSES,
-    NEW_TOKEN_AMOUNT_THRESHOLD, CHECK_INTERVAL, 
+    NEW_TOKEN_AMOUNT_THRESHOLD_MIN, NEW_TOKEN_AMOUNT_THRESHOLD_MAX, CHECK_INTERVAL, 
     PROXY_URL, USE_PROXY, CHAIN_ID,
     CHAINS_CONFIG, get_api_url, get_explorer_url, get_chain_name, get_token_records_file,
     MIN_REQUEST_INTERVAL, RATE_LIMIT_RETRY_DELAY, MAX_RETRIES, TIME_WINDOW_MINUTES
@@ -77,7 +77,6 @@ class NewTokenMonitor:
                 "amount": amount,
                 "contract": contract,
                 "explorer": explorer_link,
-                "threshold": NEW_TOKEN_AMOUNT_THRESHOLD,
                 "detected_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
@@ -547,8 +546,7 @@ class NewTokenMonitor:
                     actually_new_tokens.append(clean_token)
                     
                     # 判断是否超过阈值（用于报警）
-                    if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD:
-                        log(f"✅ 新代币 {token_symbol} 数量 {formatted_amount} 超过阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
+                    if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD_MIN and formatted_amount <= NEW_TOKEN_AMOUNT_THRESHOLD_MAX:
                         qualified_token = {
                             'address': address,
                             'contract': token['contract'],
@@ -561,8 +559,6 @@ class NewTokenMonitor:
                         
                         # 处理 Alpha 事件
                         await self.process_alpha_event(qualified_token)
-                    else:
-                        log(f"📉 新代币数量 {formatted_amount} 未达到阈值 {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
                 else:
                     log(f"⚪ 新代币 {token['contract'][:10]}... 余额为 0，但仍记录到缓存以避免重复检查")
                     # 即使余额为0，也要记录到缓存中，避免下次重复检查

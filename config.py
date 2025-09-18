@@ -95,8 +95,9 @@ except json.JSONDecodeError:
 except Exception as e:
     MONITOR_ADDRESSES = []
 
-# 新代币数量阈值 (默认 1M = 1000000)
-NEW_TOKEN_AMOUNT_THRESHOLD = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD', '1000000'))
+# 新代币数量阈值 (默认min = 1_000_000, max = 1_000_000_000)
+NEW_TOKEN_AMOUNT_THRESHOLD_MIN = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD_MIN', '1_000_000'))
+NEW_TOKEN_AMOUNT_THRESHOLD_MAX = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD_MAX', '1_000_000_000'))
 
 # 检查间隔 (秒) - 默认15分钟
 CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '120'))
@@ -163,7 +164,7 @@ def log_monitor_addresses():
 
 def log_threshold_config():
     """输出阈值配置相关的日志"""
-    log(f'💰 新代币数量阈值: {NEW_TOKEN_AMOUNT_THRESHOLD:,}')
+    log(f'💰 新代币数量阈值: {NEW_TOKEN_AMOUNT_THRESHOLD_MIN:,} - {NEW_TOKEN_AMOUNT_THRESHOLD_MAX:,}')
     log(f'⏰ 检查间隔: {CHECK_INTERVAL} 秒 ({CHECK_INTERVAL // 60} 分钟)')
     log(f'⏰ 时间窗口: 最近 {TIME_WINDOW_MINUTES} 分钟')
 
