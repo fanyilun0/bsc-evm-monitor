@@ -496,7 +496,7 @@ class NewTokenMonitor:
             log(f"🔍 上次记录代币数据: {previous_tokens}")
             previous_contracts = set()
         
-        # 找出新代币（比较合约地址）- 只考虑最近有活动但未在缓存中的代币
+        # 找出新代币（比较合约地址）- 只考虑最近有活动但未在缓存中的代币，或者已在缓存但未处理过推文的代币
         new_tokens = []
         filtered_tokens = []
         try:
@@ -507,8 +507,14 @@ class NewTokenMonitor:
                         new_tokens.append(token)
                         log(f"🆕 发现新代币: {token.get('token', 'Unknown')} - {contract_addr}")
                     else:
-                        filtered_tokens.append(token)
-                        log(f"🔄 已知代币(跳过): {token.get('token', 'Unknown')} - {contract_addr}")
+                        # 检查是否已经处理过推文
+                        cached_token = next((t for t in previous_tokens if isinstance(t, dict) and t.get('contract', '').lower() == contract_addr), None)
+                        if cached_token and not cached_token.get('twitter_processed', False):
+                            new_tokens.append(token)
+                            log(f"🔄 已知代币但未处理推文: {token.get('token', 'Unknown')} - {contract_addr}")
+                        else:
+                            filtered_tokens.append(token)
+                            log(f"🔄 已知代币且已处理推文(跳过): {token.get('token', 'Unknown')} - {contract_addr}")
                 else:
                     log(f"⚠️ 跳过无效的代币数据: {token}")
         except Exception as e:
@@ -520,9 +526,14 @@ class NewTokenMonitor:
         # 获取新代币的余额并检查是否符合条件
         qualified_tokens = []
         actually_new_tokens = []  # 只记录真正需要添加到缓存的代币
+        tokens_to_update = []  # 需要更新的现有代币
         
         for token in new_tokens:
             try:
+                contract_addr = token['contract'].lower()
+                # 检查是否是已存在但未处理推文的代币
+                existing_token = next((t for t in previous_tokens if isinstance(t, dict) and t.get('contract', '').lower() == contract_addr), None)
+                
                 # 获取余额
                 balance = await self.get_token_balance(address, token['contract'])
                 token['number'] = balance
@@ -535,15 +546,15 @@ class NewTokenMonitor:
                     # 更新token名称
                     token['token'] = f"{token_name} ({token_symbol})"
                     
-                    log(f"🆕 新代币: {token['token']} - 数量: {formatted_amount}")
+                    log(f"🆕 处理代币: {token['token']} - 数量: {formatted_amount}")
                     
-                    # 将该代币记录为需要添加到缓存的代币（无论是否超过阈值）
+                    # 准备代币数据
                     clean_token = {
                         'token': token['token'],
                         'contract': token['contract'].lower(),
-                        'number': balance
+                        'number': balance,
+                        'twitter_processed': False  # 标记是否已经处理过推文
                     }
-                    actually_new_tokens.append(clean_token)
                     
                     # 判断是否超过阈值（用于报警）
                     if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD_MIN and formatted_amount <= NEW_TOKEN_AMOUNT_THRESHOLD_MAX:
@@ -558,33 +569,56 @@ class NewTokenMonitor:
                         qualified_tokens.append(qualified_token)
                         
                         # 处理 Alpha 事件
-                        await self.process_alpha_event(qualified_token)
+                        alpha_success = await self.process_alpha_event(qualified_token)
+                        if alpha_success:
+                            # 标记该代币为已处理推文
+                            clean_token['twitter_processed'] = True
+                            log(f"✅ 代币 {token['token']} 推文处理成功，已标记为已处理")
+                    
+                    # 根据是否为新代币决定添加还是更新
+                    if existing_token:
+                        tokens_to_update.append((existing_token, clean_token))
+                    else:
+                        actually_new_tokens.append(clean_token)
                 else:
-                    log(f"⚪ 新代币 {token['contract'][:10]}... 余额为 0，但仍记录到缓存以避免重复检查")
+                    log(f"⚪ 代币 {token['contract'][:10]}... 余额为 0，但仍记录到缓存以避免重复检查")
                     # 即使余额为0，也要记录到缓存中，避免下次重复检查
                     clean_token = {
                         'token': token.get('token', 'Unknown'),
                         'contract': token['contract'].lower(),
-                        'number': 0
+                        'number': 0,
+                        'twitter_processed': False  # 标记是否已经处理过推文
                     }
-                    actually_new_tokens.append(clean_token)
+                    
+                    if existing_token:
+                        tokens_to_update.append((existing_token, clean_token))
+                    else:
+                        actually_new_tokens.append(clean_token)
             except Exception as e:
-                log(f"❌ 处理新代币失败: {e}")
+                log(f"❌ 处理代币失败: {e}")
         
-        # 更新记录（只添加真正的新代币到记录中）
+        # 更新记录
         try:
+            current_tokens = self.token_records.get(address, [])
+            
+            # 更新现有代币
+            for existing_token, updated_data in tokens_to_update:
+                existing_token.update(updated_data)
+                log(f"📝 更新现有代币记录: {updated_data['token']}")
+            
+            # 添加新代币
             if actually_new_tokens:
-                # 获取当前缓存
-                current_tokens = self.token_records.get(address, [])
-                
-                # 添加新发现的代币
                 current_tokens.extend(actually_new_tokens)
-                
-                # 更新缓存
-                self.token_records[address] = current_tokens
-                log(f"📝 更新缓存: 地址 {address} 新增 {len(actually_new_tokens)} 个代币记录")
+                log(f"📝 新增代币记录: {len(actually_new_tokens)} 个")
+            
+            # 更新缓存
+            self.token_records[address] = current_tokens
+            
+            total_changes = len(tokens_to_update) + len(actually_new_tokens)
+            if total_changes > 0:
+                log(f"📝 更新缓存: 地址 {address} 共处理 {total_changes} 个代币记录")
             else:
-                log(f"📝 无新代币需要添加到缓存")
+                log(f"📝 无代币记录需要更新")
         except Exception as e:
             log(f"❌ 更新代币记录失败: {e}")
         
@@ -615,7 +649,7 @@ class NewTokenMonitor:
         message_parts.append(f"- 链: {self.chain_name}")
         message_parts.append(f"- 涉及地址: {total_addresses} 个")
         message_parts.append(f"- 新代币总数: {total_tokens} 个")
-        message_parts.append(f"- 阈值: {NEW_TOKEN_AMOUNT_THRESHOLD:,}")
+        message_parts.append(f"- 阈值: {NEW_TOKEN_AMOUNT_THRESHOLD_MIN:,} - {NEW_TOKEN_AMOUNT_THRESHOLD_MAX:,}")
         message_parts.append(f"- 检测时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         message_parts.append("")
         

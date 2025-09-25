@@ -179,13 +179,15 @@ async def process_token_event(token_info):
                 return result is not None
             return False
         
-        log(f"🔍 使用关键词 '{search_keyword}' 搜索 {TWITTER_USERNAME} 的推文")
+        # 拼接 alpha 关键字来限制查询的推文
+        search_keyword_with_alpha = f"{search_keyword} alpha"
+        log(f"🔍 使用关键词 '{search_keyword_with_alpha}' 搜索 {TWITTER_USERNAME} 的推文")
         
         # 搜索相关推文
-        tweets = await search_user_tweets(TWITTER_USERNAME, search_keyword)
+        tweets = await search_user_tweets(TWITTER_USERNAME, search_keyword_with_alpha)
         
         if not tweets:
-            log(f"⚠️ 未找到关于 '{search_keyword}' 的推文，仅发送新推文")
+            log(f"⚠️ 未找到关于 '{search_keyword_with_alpha}' 的推文，仅发送新推文")
             # 构建推文内容
             tweet_content = generate_token_tweet(token_info)
             # 发送新推文
