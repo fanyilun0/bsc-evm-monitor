@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from logger import log
 from config import (
     TWITTER_API_BASE_URL, 
@@ -141,6 +141,40 @@ async def search_user_tweets(username, keywords, max_results=10, retry_count=0, 
             return await search_user_tweets(username, keywords, max_results, retry_count + 1, max_retries)
         return []
 
+def is_tweet_recent(created_at_str, days=7):
+    """检查推文是否在指定天数内发布
+    
+    Args:
+        created_at_str (str): 推文发布时间字符串
+        days (int): 检查天数，默认7天
+        
+    Returns:
+        bool: 是否在指定时间内
+    """
+    try:
+        # 解析推文时间 (假设格式为 ISO 8601: 2025-09-23T13:02:21+00:00)
+        if created_at_str:
+            # 移除时区信息进行简单比较，或者使用更复杂的时区处理
+            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+            
+            # 获取当前时间 (UTC)
+            now = datetime.now(created_at.tzinfo) if created_at.tzinfo else datetime.now()
+            
+            # 计算时间差
+            time_diff = now - created_at
+            
+            # 检查是否在指定天数内
+            is_recent = time_diff.days <= days
+            
+            log(f"📅 推文时间检查: 发布于 {created_at_str}, {time_diff.days} 天前, {'✅ 时效内' if is_recent else '❌ 已过期'}")
+            return is_recent
+    except Exception as e:
+        log(f"❌ 推文时间解析失败: {e}, 原始时间: {created_at_str}")
+        # 如果解析失败，保守地返回False，不发送推文
+        return False
+    
+    return False
+
 async def process_token_event(token_info):
     """处理代币事件，搜索相关推文并发送回复
     
@@ -194,20 +228,39 @@ async def process_token_event(token_info):
             result = await send_tweet(tweet_content)
             return result is not None
         
-        await send_message_async(f"🔍 搜索到推文: {tweets[0].get('text')}")
+        await send_message_async(f"🔍 搜索到 {len(tweets)} 条推文")
+
+        # 过滤出最近一周内的推文
+        recent_tweets = []
+        for tweet in tweets:
+            created_at = tweet.get('created_at')
+            if created_at and is_tweet_recent(created_at):
+                recent_tweets.append(tweet)
+                log(f"✅ 保留时效内推文: {tweet.get('text', '')[:50]}...")
+            else:
+                log(f"❌ 过滤过期推文: {tweet.get('text', '')[:50]}...")
+        
+        # 如果没有时效内的推文，只发送新推文
+        if not recent_tweets:
+            log(f"⚠️ 没有时效内的推文，仅发送新推文")
+            tweet_content = generate_token_tweet(token_info)
+            # 发送新推文
+            result = await send_tweet(tweet_content)
+            return result is not None
+
+        await send_message_async(f"✅ 筛选后剩余 {len(recent_tweets)} 条时效内推文")
 
         # 构建推文内容
         tweet_content = generate_token_tweet(token_info)
         success_count = 0
-        total_attempts = len(tweets) + 1  # 包括新推文
+        total_attempts = len(recent_tweets) + 1  # 包括新推文
         
         # 先发送一条普通推文
         if await send_tweet(tweet_content):
             success_count += 1
         
-        # 对每条找到的推文发送回复
-        for tweet in tweets:
-
+        # 对每条找到的时效内推文发送回复
+        for tweet in recent_tweets:
             tweet_id = tweet.get('id')
             if tweet_id:
                 # 发送回复

@@ -59,3 +59,31 @@ response:
 - 发两次回复
 
 4. 其中 接口地址是在 config 和 env中进行配置并正确应用
+
+
+## 获取推文超时处理
+由于推特API的限制， 如果在60s没有获取到相关的推文则终止对相关推文的请求；
+
+搜索的关键字需要调整： 拼接 alpha 关键字（如“token alpha”） 来限制查询的推文
+
+对于已经检索过关键字代币， 需要正确缓存，对于已经缓存过的代币，不需要二次检索和发送相关的推文
+
+[
+  {
+    "id": 1970473813579309300,
+    "text": "RT @BinanceWallet: Get ready! Binance Alpha will be the first platform to feature Plasma (XPL) on September 25.\n\nEligible users can claim t…",
+    "author_id": 877807935493034000,
+    "created_at": "2025-09-23T13:02:21+00:00",
+    "public_metrics": {
+      "retweet_count": 291,
+      "reply_count": 0,
+      "like_count": 0,
+      "quote_count": 0,
+      "bookmark_count": 0,
+      "impression_count": 2
+    }
+  }
+]
+
+1. 如果检索到的推文不是最近一周发布的， 则不需要发送任何推文
+2. 如果监听到了到新代币的TX，第一时间先缓存， 之后再处理发送推文相关的逻辑； 避免由于发推时产生的错误导致缓存失败

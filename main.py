@@ -523,11 +523,12 @@ class NewTokenMonitor:
         
         log(f"🎯 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，上次记录 {len(previous_tokens)} 个，新代币 {len(new_tokens)} 个，已知代币 {len(filtered_tokens)} 个")
         
-        # 获取新代币的余额并检查是否符合条件
-        qualified_tokens = []
+        # 第一阶段：获取新代币的余额并立即缓存（避免推文错误影响缓存）
         actually_new_tokens = []  # 只记录真正需要添加到缓存的代币
         tokens_to_update = []  # 需要更新的现有代币
+        tokens_for_twitter = []  # 需要处理推文的代币信息
         
+        log(f"🔄 第一阶段：获取代币余额并优先缓存")
         for token in new_tokens:
             try:
                 contract_addr = token['contract'].lower()
@@ -546,40 +547,34 @@ class NewTokenMonitor:
                     # 更新token名称
                     token['token'] = f"{token_name} ({token_symbol})"
                     
-                    log(f"🆕 处理代币: {token['token']} - 数量: {formatted_amount}")
+                    log(f"🆕 发现代币: {token['token']} - 数量: {formatted_amount}")
                     
-                    # 准备代币数据
+                    # 准备代币数据（先缓存，推文处理状态稍后更新）
                     clean_token = {
                         'token': token['token'],
                         'contract': token['contract'].lower(),
                         'number': balance,
-                        'twitter_processed': False  # 标记是否已经处理过推文
+                        'twitter_processed': False  # 初始标记为未处理推文
                     }
-                    
-                    # 判断是否超过阈值（用于报警）
-                    if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD_MIN and formatted_amount <= NEW_TOKEN_AMOUNT_THRESHOLD_MAX:
-                        qualified_token = {
-                            'address': address,
-                            'contract': token['contract'],
-                            'token': token['token'],
-                            'decimals': token_decimals,
-                            'amount': formatted_amount,
-                            'raw_balance': balance
-                        }
-                        qualified_tokens.append(qualified_token)
-                        
-                        # 处理 Alpha 事件
-                        alpha_success = await self.process_alpha_event(qualified_token)
-                        if alpha_success:
-                            # 标记该代币为已处理推文
-                            clean_token['twitter_processed'] = True
-                            log(f"✅ 代币 {token['token']} 推文处理成功，已标记为已处理")
                     
                     # 根据是否为新代币决定添加还是更新
                     if existing_token:
                         tokens_to_update.append((existing_token, clean_token))
                     else:
                         actually_new_tokens.append(clean_token)
+                    
+                    # 检查是否超过阈值，如果超过则记录到推文处理列表
+                    if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD_MIN and formatted_amount <= NEW_TOKEN_AMOUNT_THRESHOLD_MAX:
+                        twitter_token_info = {
+                            'address': address,
+                            'contract': token['contract'],
+                            'token': token['token'],
+                            'decimals': token_decimals,
+                            'amount': formatted_amount,
+                            'raw_balance': balance,
+                            'cache_ref': clean_token  # 保存缓存对象的引用，用于后续更新推文处理状态
+                        }
+                        tokens_for_twitter.append(twitter_token_info)
                 else:
                     log(f"⚪ 代币 {token['contract'][:10]}... 余额为 0，但仍记录到缓存以避免重复检查")
                     # 即使余额为0，也要记录到缓存中，避免下次重复检查
@@ -597,7 +592,8 @@ class NewTokenMonitor:
             except Exception as e:
                 log(f"❌ 处理代币失败: {e}")
         
-        # 更新记录
+        # 立即更新缓存（优先缓存，确保数据不丢失）
+        log(f"💾 立即保存缓存，避免推文处理错误影响数据完整性")
         try:
             current_tokens = self.token_records.get(address, [])
             
@@ -616,11 +612,38 @@ class NewTokenMonitor:
             
             total_changes = len(tokens_to_update) + len(actually_new_tokens)
             if total_changes > 0:
-                log(f"📝 更新缓存: 地址 {address} 共处理 {total_changes} 个代币记录")
+                log(f"✅ 缓存已保存: 地址 {address} 共处理 {total_changes} 个代币记录")
+                # 立即保存到文件
+                self.save_token_records()
             else:
                 log(f"📝 无代币记录需要更新")
         except Exception as e:
             log(f"❌ 更新代币记录失败: {e}")
+        
+        # 第二阶段：处理推文发送（缓存已保存，推文错误不会影响缓存）
+        log(f"🔄 第二阶段：处理推文发送（共 {len(tokens_for_twitter)} 个符合阈值的代币）")
+        qualified_tokens = []
+        
+        for twitter_token_info in tokens_for_twitter:
+            try:
+                # 移除缓存引用，准备返回的数据
+                cache_ref = twitter_token_info.pop('cache_ref')
+                qualified_tokens.append(twitter_token_info)
+                
+                log(f"🐦 处理推文: {twitter_token_info['token']} - 数量: {twitter_token_info['amount']}")
+                
+                # 处理 Alpha 事件（推文发送）
+                alpha_success = await self.process_alpha_event(twitter_token_info)
+                if alpha_success:
+                    # 标记该代币为已处理推文
+                    cache_ref['twitter_processed'] = True
+                    log(f"✅ 代币 {twitter_token_info['token']} 推文处理成功，已标记为已处理")
+                    # 再次保存缓存，更新推文处理状态
+                    self.save_token_records()
+                else:
+                    log(f"⚠️ 代币 {twitter_token_info['token']} 推文处理失败，但缓存已保存")
+            except Exception as e:
+                log(f"❌ 处理推文失败: {e}，但代币缓存已保存")
         
         return qualified_tokens
     
@@ -699,8 +722,7 @@ class NewTokenMonitor:
                                 await asyncio.sleep(2)
                             await asyncio.sleep(1)  # 地址间增加延时
                     
-                    # 保存代币记录
-                    self.save_token_records()
+                    # 代币记录已在check_new_tokens中保存，无需重复保存
                     
                     # 如果有符合条件的新代币，发送统一告警
                     if all_qualified_tokens:
