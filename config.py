@@ -119,7 +119,7 @@ def get_token_records_file(chain_id=None):
 TOKEN_RECORDS_FILE = get_token_records_file(CHAIN_ID)
 
 # Twitter API 配置
-TWITTER_API_BASE_URL = os.getenv('TWITTER_API_BASE_URL', 'http://127.0.0.1:8008')
+TWITTER_API_BASE_URL = os.getenv('TWITTER_API_BASE_URL', 'http://127.0.0.1:8000')
 TWITTER_TWEET_ENDPOINT = os.getenv('TWITTER_TWEET_ENDPOINT', '/tweet')
 TWITTER_SEARCH_ENDPOINT = os.getenv('TWITTER_SEARCH_ENDPOINT', '/search/user_tweets')
 TWITTER_USERNAME = os.getenv('TWITTER_USERNAME', 'binance')

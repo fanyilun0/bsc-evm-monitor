@@ -14,14 +14,12 @@ from config import (
 )
 from webhook import send_message_async
 
-async def send_tweet(content, in_reply_to_tweet_id=None, retry_count=0, max_retries=3):
+async def send_tweet(content, in_reply_to_tweet_id=None):
     """发送推文
 
     Args:
         content (str): 推文内容
         in_reply_to_tweet_id (str, optional): 回复的推文ID
-        retry_count (int): 当前重试次数
-        max_retries (int): 最大重试次数
 
     Returns:
         dict: API响应
@@ -61,41 +59,22 @@ async def send_tweet(content, in_reply_to_tweet_id=None, retry_count=0, max_retr
                 else:
                     error_text = await response.text()
                     log(f"❌ 推文发送失败: 状态码 {response.status}, 错误: {error_text}")
-                    
-                    # 如果是服务器错误(5xx)，尝试重试
-                    if 500 <= response.status < 600 and retry_count < max_retries:
-                        retry_delay = 2 ** retry_count  # 指数退避
-                        log(f"⏳ {retry_delay}秒后进行第{retry_count + 1}次重试...")
-                        await asyncio.sleep(retry_delay)
-                        return await send_tweet(content, in_reply_to_tweet_id, retry_count + 1, max_retries)
                     return None
                     
     except asyncio.TimeoutError:
         log(f"⏰ 推文发送超时")
-        if retry_count < max_retries:
-            retry_delay = 2 ** retry_count  # 指数退避
-            log(f"⏳ {retry_delay}秒后进行第{retry_count + 1}次重试...")
-            await asyncio.sleep(retry_delay)
-            return await send_tweet(content, in_reply_to_tweet_id, retry_count + 1, max_retries)
         return None
     except Exception as e:
         log(f"❌ 推文发送请求异常: {str(e)}")
-        if retry_count < max_retries:
-            retry_delay = 2 ** retry_count  # 指数退避
-            log(f"⏳ {retry_delay}秒后进行第{retry_count + 1}次重试...")
-            await asyncio.sleep(retry_delay)
-            return await send_tweet(content, in_reply_to_tweet_id, retry_count + 1, max_retries)
         return None
 
-async def search_user_tweets(username, keywords, max_results=10, retry_count=0, max_retries=3):
+async def search_user_tweets(username, keywords, max_results=10):
     """搜索用户推文
     
     Args:
         username (str): 用户名
         keywords (str): 关键词
         max_results (int, optional): 最大结果数
-        retry_count (int): 当前重试次数
-        max_retries (int): 最大重试次数
         
     Returns:
         list: 推文列表
@@ -117,34 +96,16 @@ async def search_user_tweets(username, keywords, max_results=10, retry_count=0, 
             async with session.get(endpoint, params=params, headers=headers, proxy=proxy) as response:
                 if response.status == 200:
                     return await response.json()
-
                 else:
                     error_text = await response.text()
                     log(f"❌ 搜索推文失败: 状态码 {response.status}, 错误: {error_text}")
-                    
-                    # 如果是服务器错误(5xx)，尝试重试
-                    if 500 <= response.status < 600 and retry_count < max_retries:
-                        retry_delay = 2 ** retry_count  # 指数退避
-                        log(f"⏳ {retry_delay}秒后进行第{retry_count + 1}次重试...")
-                        await asyncio.sleep(retry_delay)
-                        return await search_user_tweets(username, keywords, max_results, retry_count + 1, max_retries)
                     return []
                     
     except asyncio.TimeoutError:
         log(f"⏰ 搜索推文超时")
-        if retry_count < max_retries:
-            retry_delay = 2 ** retry_count  # 指数退避
-            log(f"⏳ {retry_delay}秒后进行第{retry_count + 1}次重试...")
-            await asyncio.sleep(retry_delay)
-            return await search_user_tweets(username, keywords, max_results, retry_count + 1, max_retries)
         return []
     except Exception as e:
         log(f"❌ 搜索推文请求异常: {str(e)}")
-        if retry_count < max_retries:
-            retry_delay = 2 ** retry_count  # 指数退避
-            log(f"⏳ {retry_delay}秒后进行第{retry_count + 1}次重试...")
-            await asyncio.sleep(retry_delay)
-            return await search_user_tweets(username, keywords, max_results, retry_count + 1, max_retries)
         return []
 
 def is_tweet_recent(created_at_str, days=7):
