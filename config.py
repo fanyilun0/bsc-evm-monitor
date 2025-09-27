@@ -101,8 +101,8 @@ NEW_TOKEN_AMOUNT_THRESHOLD_MAX = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD_MAX',
 
 CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '300'))
 
-# 时间窗口配置 (分钟) - 只检查最近N分钟内的交易
-TIME_WINDOW_MINUTES = int(os.getenv('TIME_WINDOW_MINUTES', '10'))
+# 时间窗口配置
+TIME_WINDOW_MINUTES = CHECK_INTERVAL / 60 + 1
 
 # API限制控制配置
 MIN_REQUEST_INTERVAL = float(os.getenv('MIN_REQUEST_INTERVAL', '1'))  # 最小请求间隔（秒）
@@ -123,17 +123,19 @@ TWITTER_API_BASE_URL = os.getenv('TWITTER_API_BASE_URL', 'http://127.0.0.1:8008'
 TWITTER_TWEET_ENDPOINT = os.getenv('TWITTER_TWEET_ENDPOINT', '/tweet')
 TWITTER_SEARCH_ENDPOINT = os.getenv('TWITTER_SEARCH_ENDPOINT', '/search/user_tweets')
 TWITTER_USERNAME = os.getenv('TWITTER_USERNAME', 'binance')
+TWITTER_ENABLED = os.getenv('TWITTER_ENABLED', 'true').lower() == 'true'
 
 # Config 类 - 为了兼容其他模块的使用
 class Config:
     # 日志配置
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-    
+
     # Twitter API 配置
     TWITTER_API_BASE_URL = TWITTER_API_BASE_URL
     TWITTER_TWEET_ENDPOINT = TWITTER_TWEET_ENDPOINT
     TWITTER_SEARCH_ENDPOINT = TWITTER_SEARCH_ENDPOINT
     TWITTER_USERNAME = TWITTER_USERNAME
+    TWITTER_ENABLED = TWITTER_ENABLED
 
 # 将日志输出分组到不同的函数中
 def log_api_keys_config():
@@ -180,7 +182,10 @@ def log_config_validation():
         log('❌ 错误: 未配置监控地址，请在.env文件中设置MONITOR_ADDRESSES')
     if not WEBHOOK_URL:
         log('⚠️ 警告: 未配置Webhook URL，告警消息将无法发送')
-    
+
+    # Twitter 推文发送开关状态
+    log(f'🐦 推文发送功能: {"✅ 启用" if TWITTER_ENABLED else "❌ 禁用"}')
+
     # 警告仅使用默认Twitter API配置
     twitter_api_url = os.getenv('TWITTER_API_BASE_URL')
     if not twitter_api_url or twitter_api_url == 'http://127.0.0.1:8008':

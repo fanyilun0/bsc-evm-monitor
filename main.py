@@ -206,7 +206,7 @@ class NewTokenMonitor:
         chain_id = clean_params.get('chainid', self.chain_id)
         
         log(f"🔗 请求URL: {self.api_url}")
-        log(f"📋 请求参数: {clean_params}")
+        # log(f"📋 请求参数: {clean_params}")
         log(f"🔑 使用API密钥: {current_key[:10]}...")
         log(f"🌐 Etherscan API调用: module={module}, action={action}, chain_id={chain_id}")
         

@@ -4,29 +4,35 @@ import json
 from datetime import datetime, timedelta
 from logger import log
 from config import (
-    TWITTER_API_BASE_URL, 
-    TWITTER_TWEET_ENDPOINT, 
-    TWITTER_SEARCH_ENDPOINT, 
+    TWITTER_API_BASE_URL,
+    TWITTER_TWEET_ENDPOINT,
+    TWITTER_SEARCH_ENDPOINT,
     TWITTER_USERNAME,
-    PROXY_URL, 
+    TWITTER_ENABLED,
+    PROXY_URL,
     USE_PROXY
 )
 from webhook import send_message_async
 
 async def send_tweet(content, in_reply_to_tweet_id=None, retry_count=0, max_retries=3):
     """发送推文
-    
+
     Args:
         content (str): 推文内容
         in_reply_to_tweet_id (str, optional): 回复的推文ID
         retry_count (int): 当前重试次数
         max_retries (int): 最大重试次数
-        
+
     Returns:
         dict: API响应
     """
     if not content:
         log("❌ 推文内容为空，跳过发送")
+        return None
+
+    # 检查推文发送开关
+    if not TWITTER_ENABLED:
+        log("🐦 推文发送功能已禁用，跳过发送")
         return None
         
     endpoint = f"{TWITTER_API_BASE_URL}{TWITTER_TWEET_ENDPOINT}"
@@ -177,10 +183,10 @@ def is_tweet_recent(created_at_str, days=7):
 
 async def process_token_event(token_info):
     """处理代币事件，搜索相关推文并发送回复
-    
+
     Args:
         token_info (dict): 代币信息
-        
+
     Returns:
         bool: 处理是否成功
     """
@@ -188,7 +194,7 @@ async def process_token_event(token_info):
         # 提取代币名称作为关键词
         token_name = token_info.get('name', '')
         token_symbol = token_info.get('symbol', '')
-        
+
         # 检查代币信息是否有效
         if (not token_name or token_name == 'Unknown' or token_name == 'Unknown Token') and \
            (not token_symbol or token_symbol == 'Unknown'):
@@ -210,7 +216,12 @@ async def process_token_event(token_info):
         # 拼接 alpha 关键字来限制查询的推文
         search_keyword_with_alpha = f"{search_keyword} alpha"
         log(f"🔍 使用关键词 '{search_keyword_with_alpha}' 搜索 {TWITTER_USERNAME} 的推文")
-        
+
+        # 如果推文发送功能被禁用，跳过搜索和推文发送
+        if not TWITTER_ENABLED:
+            log("🐦 推文发送功能已禁用，跳过推文搜索和发送")
+            return True
+
         # 搜索相关推文
         tweets = await search_user_tweets(TWITTER_USERNAME, search_keyword_with_alpha)
         
