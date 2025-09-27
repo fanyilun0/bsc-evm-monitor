@@ -192,13 +192,7 @@ async def process_token_event(token_info):
         # 检查代币信息是否有效
         if (not token_name or token_name == 'Unknown' or token_name == 'Unknown Token') and \
            (not token_symbol or token_symbol == 'Unknown'):
-            log(f"⚠️ 代币信息无效，仅发送新推文")
-            # 构建推文内容
-            tweet_content = generate_token_tweet(token_info)
-            if tweet_content:
-                # 发送新推文
-                result = await send_tweet(tweet_content)
-                return result is not None
+            log(f"⚠️ 代币信息无效")
             return False
             
         # 优先使用代币符号作为关键词

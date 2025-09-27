@@ -45,6 +45,13 @@ class NewTokenMonitor:
         log(f"🔗 API URL: {self.api_url}")
         log(f"🔗 Explorer URL: {self.explorer_url}")
         log(f"⏰ 时间窗口: 最近 {self.time_window_minutes} 分钟")
+        log(f"🎯 区块号控制: 启用严格的区块范围查询，避免重复监听历史交易")
+        log(f"🔄 区块号获取策略: API查询 + 时间估算双重保障")
+        
+        # 显示不同链的平均出块时间
+        avg_block_times = {1: 12, 56: 3, 8453: 2}
+        avg_time = avg_block_times.get(self.chain_id, 12)
+        log(f"⏱️  {self.chain_name} 平均出块时间: ~{avg_time}秒")
     
     def generate_alpha_event(self, qualified_token):
         """生成符合 alpha.json 格式的事件数据"""
@@ -116,58 +123,47 @@ class NewTokenMonitor:
 
         
     def load_token_records(self):
-        """加载代币记录 - 新格式，按链ID分别存储"""
+        """加载代币记录 - 简化格式，只存储已处理过的合约地址列表"""
         records_file = get_token_records_file(self.chain_id)
         try:
             with open(records_file, 'r') as f:
                 data = json.load(f)
-                log(f"📂 加载代币记录文件: {records_file}, {len(data)} 个地址")
                 
-                # 验证数据格式
-                if not isinstance(data, dict):
-                    log("⚠️ 代币记录文件格式错误，使用空数据")
-                    return {}
-                
-                # 检查每个地址的数据格式
-                for address, tokens in data.items():
-                    if not isinstance(tokens, list):
-                        log(f"⚠️ 地址 {address} 的代币数据格式错误，重置为空列表")
-                        data[address] = []
-                        continue
-                    
-                    # 验证每个代币对象并确保合约地址格式统一
-                    valid_tokens = []
-                    for token in tokens:
-                        if isinstance(token, dict) and 'contract' in token:
-                            # 确保所有必需字段都存在，并统一合约地址为小写
-                            token_obj = {
-                                'token': token.get('token', 'Unknown'),
-                                'contract': token['contract'].lower(),  # 统一为小写
-                                'number': token.get('number', 0)
-                            }
-                            valid_tokens.append(token_obj)
+                # 验证数据格式为合约地址列表
+                if isinstance(data, list):
+                    # 确保所有地址都是小写且格式正确
+                    contract_list = []
+                    for addr in data:
+                        if isinstance(addr, str) and addr.startswith('0x') and len(addr) == 42:
+                            contract_list.append(addr.lower())
                         else:
-                            log(f"⚠️ 跳过无效的代币数据: {token}")
+                            log(f"⚠️ 跳过无效的合约地址: {addr}")
                     
-                    data[address] = valid_tokens
-                
-                return data
+                    log(f"📂 加载代币记录文件: {records_file}, {len(contract_list)} 个已处理合约地址")
+                    return contract_list
+                else:
+                    log(f"❌ 代币记录文件格式错误，期望数组格式，实际: {type(data)}")
+                    return []
                 
         except FileNotFoundError:
             log(f"📂 代币记录文件不存在: {records_file}，将创建新文件")
-            return {}
+            return []
         except json.JSONDecodeError as e:
             log(f"❌ 代币记录文件JSON格式错误: {e}")
-            return {}
+            return []
         except Exception as e:
             log(f"❌ 加载代币记录文件失败: {e}")
-            return {}
+            return []
     
     def save_token_records(self):
-        """保存代币记录"""
+        """保存代币记录 - 新格式，直接保存合约地址列表"""
+        self.save_token_records_to_file(self.token_records)
+    
+    def save_token_records_to_file(self, contract_list):
+        """保存合约地址列表到文件"""
         records_file = get_token_records_file(self.chain_id)
         with open(records_file, 'w') as f:
-            json.dump(self.token_records, f, indent=2)
+            json.dump(contract_list, f, indent=2)
     
     def get_random_api_key(self):
         """随机获取一个API密钥"""
@@ -279,10 +275,11 @@ class NewTokenMonitor:
             return None
 
     async def get_block_by_timestamp(self, timestamp):
-        """根据时间戳获取最接近的区块号"""
+        """根据时间戳获取最接近的区块号 - 增强版本，支持多种API策略"""
         log(f"🔍 根据时间戳获取区块号: {timestamp}")
         log(f"📅 目标时间: {datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')}")
         
+        # 策略1: 使用 block.getblocknobytime (标准方法)
         params = {
             'chainid': self.chain_id,
             'module': 'block',
@@ -291,14 +288,101 @@ class NewTokenMonitor:
             'closest': 'before',
         }
         
-        log(f"🌐 调用Etherscan API: block.getblocknobytime - 获取时间戳对应的区块号")
+        log(f"🌐 策略1: 调用Etherscan API block.getblocknobytime")
         data = await self.make_api_request(params)
-        if data and data.get('status') == '1':
-            block_number = int(data.get('result', 0))
-            log(f"📊 时间戳 {timestamp} 对应区块号: {block_number}")
-            return block_number
+        if data and data.get('status') == '1' and data.get('result'):
+            try:
+                block_number = int(data.get('result', 0))
+                if block_number > 0:
+                    log(f"✅ 策略1成功: 时间戳 {timestamp} 对应区块号 {block_number}")
+                    return block_number
+            except (ValueError, TypeError) as e:
+                log(f"❌ 策略1结果解析失败: {e}, 原始结果: {data.get('result')}")
         else:
-            log(f"❌ 根据时间戳获取区块号失败")
+            error_msg = data.get('result', 'Unknown error') if data else 'No response'
+            log(f"❌ 策略1失败: {error_msg}")
+        
+        # 策略2: 使用估算方法（基于最新区块和平均出块时间）
+        log(f"🔄 策略2: 使用区块时间估算方法")
+        estimated_block = await self.estimate_block_by_average_time(timestamp)
+        if estimated_block:
+            log(f"✅ 策略2成功: 估算区块号 {estimated_block}")
+            return estimated_block
+        
+        log(f"❌ 所有策略失败，无法获取时间戳 {timestamp} 对应的区块号")
+        return None
+    
+    async def estimate_block_by_average_time(self, target_timestamp):
+        """基于平均出块时间估算区块号"""
+        try:
+            # 获取最新区块号
+            latest_block = await self.get_latest_block_number()
+            if not latest_block:
+                log(f"❌ 无法获取最新区块号，估算失败")
+                return None
+            
+            # 获取最新区块的时间戳
+            latest_block_info = await self.get_block_info(latest_block)
+            if not latest_block_info:
+                log(f"❌ 无法获取最新区块信息，估算失败")
+                return None
+            
+            latest_timestamp = latest_block_info.get('timestamp')
+            if not latest_timestamp:
+                log(f"❌ 最新区块时间戳无效，估算失败")
+                return None
+            
+            # 计算时间差（秒）
+            time_diff = latest_timestamp - target_timestamp
+            if time_diff < 0:
+                log(f"⚠️ 目标时间戳在未来，使用最新区块")
+                return latest_block
+            
+            # 不同链的平均出块时间（秒）
+            avg_block_times = {
+                1: 12,      # Ethereum: ~12秒
+                56: 3,      # BSC: ~3秒  
+                8453: 2     # Base: ~2秒
+            }
+            
+            avg_block_time = avg_block_times.get(self.chain_id, 12)  # 默认12秒
+            
+            # 估算需要回溯的区块数
+            blocks_to_go_back = int(time_diff / avg_block_time)
+            estimated_block = max(latest_block - blocks_to_go_back, 0)
+            
+            log(f"📊 估算参数: 最新区块={latest_block}, 最新时间={latest_timestamp}")
+            log(f"📊 时间差={time_diff}秒, 平均出块时间={avg_block_time}秒")
+            log(f"📊 回溯区块数={blocks_to_go_back}, 估算区块号={estimated_block}")
+            
+            return estimated_block
+            
+        except Exception as e:
+            log(f"❌ 区块号估算异常: {e}")
+            return None
+    
+    async def get_block_info(self, block_number):
+        """获取指定区块的详细信息"""
+        params = {
+            'chainid': self.chain_id,
+            'module': 'proxy',
+            'action': 'eth_getBlockByNumber',
+            'tag': hex(block_number),
+            'boolean': 'false'
+        }
+        
+        log(f"🌐 获取区块 {block_number} 的详细信息")
+        data = await self.make_api_request(params)
+        if data and data.get('result'):
+            try:
+                block_info = data.get('result')
+                timestamp = int(block_info.get('timestamp', '0x0'), 16)
+                return {'timestamp': timestamp, 'number': block_number}
+            except (ValueError, TypeError) as e:
+                log(f"❌ 解析区块信息失败: {e}")
+                return None
+        else:
+            log(f"❌ 获取区块信息失败")
             return None
 
     async def get_latest_block_number(self):
@@ -336,22 +420,36 @@ class NewTokenMonitor:
         return await self.get_block_by_timestamp(target_timestamp)
     
     async def get_recent_erc20_tokens(self, address, minutes_ago=None):
-        """获取地址在指定时间窗口内的ERC20代币交易记录"""
+        """获取地址在指定时间窗口内的ERC20代币交易记录 - 使用严格的区块号控制"""
         if minutes_ago is None:
             minutes_ago = self.time_window_minutes
             
         log(f"🔍 获取 {address} 最近 {minutes_ago} 分钟的ERC20代币交易记录...")
         
-        # 获取时间范围对应的区块范围
-        start_block = await self.estimate_block_by_time(minutes_ago)
-        # 如果获取区块失败，使用默认值
+        # 计算目标时间戳
+        current_time = int(time.time())
+        start_timestamp = current_time - (minutes_ago * 60)
+        
+        log(f"⏰ 时间窗口: {datetime.fromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')} - {datetime.fromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S')} (最近 {minutes_ago} 分钟)")
+        
+        # 获取对应的起始区块号
+        start_block = await self.get_block_by_timestamp(start_timestamp)
         if start_block is None:
-            log(f"⚠️ 无法获取起始区块，使用默认值")
-            # 使用一个较早的区块号作为默认值
-            start_block = 0
+            log(f"❌ 无法获取起始区块号，跳过此地址")
+            return []
         
-        latest_block = 99999999999
+        # 获取最新区块号
+        latest_block = await self.get_latest_block_number()
+        if latest_block is None:
+            log(f"❌ 无法获取最新区块号，跳过此地址")
+            return []
         
+        # 确保区块范围合理
+        if start_block > latest_block:
+            log(f"⚠️ 起始区块号({start_block})大于最新区块号({latest_block})，使用最新区块号")
+            start_block = latest_block
+        
+        # 构建API请求参数 - 严格使用区块号范围
         params = {
             'chainid': self.chain_id,
             'module': 'account',
@@ -361,28 +459,45 @@ class NewTokenMonitor:
             'endblock': latest_block,
             'page': 1,
             'offset': 10000,  # 最多10000笔交易
-            'sort': 'desc',
+            'sort': 'desc',  # 降序，最新的在前面
         }
         
-        log(f"📊 查询区块范围: {start_block} - {latest_block}")
+        log(f"📊 严格区块范围: {start_block} - {latest_block} (跨越 {latest_block - start_block} 个区块)")
         log(f"🌐 调用Etherscan API: account.tokentx - 获取地址的代币转账记录")
         log(f"📍 目标地址: {address}")
-        log(f"⏰ 时间窗口: 最近 {minutes_ago} 分钟")
         
         data = await self.make_api_request(params)
         if data and data.get('status') == '1':
-            transactions = data.get('result', [])
-            log(f"📈 获取到 {len(transactions)} 笔最近交易记录")
+            all_transactions = data.get('result', [])
+            log(f"📈 区块范围内API返回 {len(all_transactions)} 笔交易记录")
             
-            if not transactions:
-                log(f"📊 最近 {minutes_ago} 分钟内没有代币交易")
+            if not all_transactions:
+                log(f"📊 地址 {address} 在指定区块范围内没有代币交易记录")
                 return []
+            
+            # 过滤转入交易并进行额外的时间戳验证
+            recent_transactions = []
+            for tx in all_transactions:
+                try:
+                    # 只关注转入交易 (to 地址是目标地址)
+                    if tx.get('to', '').lower() == address.lower():
+                        # 额外的时间戳验证（双重保险）
+                        tx_timestamp = int(tx.get('timeStamp', 0))
+                        if tx_timestamp >= start_timestamp:
+                            recent_transactions.append(tx)
+                        else:
+                            log(f"⏭️ 跳过时间戳过早的交易: {tx.get('hash', 'unknown')[:10]}... 时间: {datetime.fromtimestamp(tx_timestamp).strftime('%Y-%m-%d %H:%M:%S')}")
+                except (ValueError, TypeError):
+                    log(f"⚠️ 跳过时间戳格式错误的交易: {tx.get('timeStamp')}")
+                    continue
+            
+            log(f"📈 区块范围+时间验证后的转入交易: {len(recent_transactions)} 笔")
             
             # 提取唯一的代币合约地址
             token_info = {}
             recent_contracts = set()
             
-            for tx in transactions:
+            for tx in recent_transactions:
                 contract = tx.get('contractAddress')
                 if contract and contract.lower() not in token_info:
                     # 获取代币基本信息
@@ -392,26 +507,37 @@ class NewTokenMonitor:
                     # 记录最近交易涉及的合约
                     recent_contracts.add(contract.lower())
                     
-                    # 确保数据格式正确
+                    # 记录转入的代币信息
                     token_obj = {
                         'token': f"{token_name} ({token_symbol})" if token_name != 'Unknown' else 'Unknown',
                         'contract': contract.lower(),
                         'number': 0,  # 余额稍后获取
-                        'recent_activity': True  # 标记为最近有活动
+                        'tx_hash': tx.get('hash', ''),
+                        'tx_timestamp': tx.get('timeStamp', 0),
+                        'block_number': tx.get('blockNumber', 0)
                     }
                     
                     # 验证数据完整性
-                    if all(key in token_obj for key in ['token', 'contract', 'number']):
+                    if all(key in token_obj for key in ['token', 'contract']):
                         token_info[contract.lower()] = token_obj
                     else:
                         log(f"⚠️ 跳过不完整的代币数据: {token_obj}")
             
             result = list(token_info.values())
-            log(f"🎯 最近 {minutes_ago} 分钟内发现 {len(result)} 个代币有交易活动")
-            log(f"📝 涉及合约: {list(recent_contracts)[:5]}{'...' if len(recent_contracts) > 5 else ''}")
+            log(f"🎯 最近 {minutes_ago} 分钟内发现 {len(result)} 个代币有转入交易")
+            
+            if result:
+                log(f"📝 涉及合约: {list(recent_contracts)[:5]}{'...' if len(recent_contracts) > 5 else ''}")
+                # 显示一些交易详情用于调试
+                for i, token in enumerate(result[:3]):  # 只显示前3个
+                    timestamp = int(token.get('tx_timestamp', 0))
+                    time_str = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S') if timestamp > 0 else 'Unknown'
+                    log(f"  {i+1}. {token['token']} - 合约: {token['contract'][:10]}... - 区块: {token.get('block_number', 'Unknown')} - 时间: {time_str}")
+            
             return result
         else:
-            log(f"❌ 获取最近代币交易失败，跳过此地址")
+            error_result = data.get('result', 'Unknown error') if data else 'No response'
+            log(f"❌ 获取代币交易失败: {error_result}")
             return []
     
     async def get_token_balance(self, address, token_contract):
@@ -474,176 +600,90 @@ class NewTokenMonitor:
         return formatted
     
     async def check_new_tokens(self, address):
-        """检查地址的新代币 - 基于最近时间窗口内的交易"""
+        """检查地址的新代币 - 重构后的简化版本，只检查合约地址是否已处理过"""
         log(f"🔍 检查地址 {address} 的代币...")
         
         # 获取最近时间窗口内有活动的代币
         recent_tokens = await self.get_recent_erc20_tokens(address)
-        log(f"🔍 最近活动代币数据类型: {type(recent_tokens)}, 长度: {len(recent_tokens) if recent_tokens else 0}")
+        log(f"🔍 最近活动代币: {len(recent_tokens) if recent_tokens else 0} 个")
         
-        # 获取上次记录的代币
-        previous_tokens = self.token_records.get(address, [])
-        log(f"🔍 上次记录代币数据类型: {type(previous_tokens)}, 长度: {len(previous_tokens)}")
+        if not recent_tokens:
+            log(f"📊 地址 {address} 最近无代币活动")
+            return []
         
-        # 提取上次记录的合约地址集合 - 确保地址统一为小写
-        try:
-            previous_contracts = {token['contract'].lower() for token in previous_tokens if isinstance(token, dict) and 'contract' in token}
-            log(f"🔍 上次记录合约地址集合: {len(previous_contracts)} 个")
-            if previous_contracts:
-                log(f"🔍 已记录的合约地址样本: {list(previous_contracts)[:3]}{'...' if len(previous_contracts) > 3 else ''}")
-        except Exception as e:
-            log(f"❌ 创建合约地址集合失败: {e}")
-            log(f"🔍 上次记录代币数据: {previous_tokens}")
-            previous_contracts = set()
-        
-        # 找出新代币（比较合约地址）- 只考虑最近有活动但未在缓存中的代币，或者已在缓存但未处理过推文的代币
-        new_tokens = []
-        filtered_tokens = []
-        try:
-            for token in recent_tokens:
-                if isinstance(token, dict) and 'contract' in token:
-                    contract_addr = token['contract'].lower()
-                    if contract_addr not in previous_contracts:
-                        new_tokens.append(token)
-                        log(f"🆕 发现新代币: {token.get('token', 'Unknown')} - {contract_addr}")
-                    else:
-                        # 检查是否已经处理过推文
-                        cached_token = next((t for t in previous_tokens if isinstance(t, dict) and t.get('contract', '').lower() == contract_addr), None)
-                        if cached_token and not cached_token.get('twitter_processed', False):
-                            new_tokens.append(token)
-                            log(f"🔄 已知代币但未处理推文: {token.get('token', 'Unknown')} - {contract_addr}")
-                        else:
-                            filtered_tokens.append(token)
-                            log(f"🔄 已知代币且已处理推文(跳过): {token.get('token', 'Unknown')} - {contract_addr}")
+        # 找出新代币（未在已处理列表中的合约地址）
+        new_contract_tokens = []
+        for token in recent_tokens:
+            if isinstance(token, dict) and 'contract' in token:
+                contract_addr = token['contract'].lower()
+                if contract_addr not in self.token_records:
+                    new_contract_tokens.append(token)
+                    log(f"🆕 发现新合约地址: {contract_addr}")
                 else:
-                    log(f"⚠️ 跳过无效的代币数据: {token}")
-        except Exception as e:
-            log(f"❌ 比较代币时出错: {e}")
-            log(f"🔍 最近活动代币数据: {recent_tokens}")
+                    log(f"⏭️ 跳过已处理合约: {contract_addr}")
+            else:
+                log(f"⚠️ 跳过无效的代币数据: {token}")
         
-        log(f"🎯 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，上次记录 {len(previous_tokens)} 个，新代币 {len(new_tokens)} 个，已知代币 {len(filtered_tokens)} 个")
+        log(f"🎯 地址 {address}: 最近活动代币 {len(recent_tokens)} 个，新合约 {len(new_contract_tokens)} 个")
         
-        # 第一阶段：获取新代币的余额并立即缓存（避免推文错误影响缓存）
-        actually_new_tokens = []  # 只记录真正需要添加到缓存的代币
-        tokens_to_update = []  # 需要更新的现有代币
-        tokens_for_twitter = []  # 需要处理推文的代币信息
+        if not new_contract_tokens:
+            return []
         
-        log(f"🔄 第一阶段：获取代币余额并优先缓存")
-        for token in new_tokens:
+        # 处理新代币：获取余额、检查阈值、发送推文
+        qualified_tokens = []
+        new_processed_contracts = []
+        
+        for token in new_contract_tokens:
             try:
                 contract_addr = token['contract'].lower()
-                # 检查是否是已存在但未处理推文的代币
-                existing_token = next((t for t in previous_tokens if isinstance(t, dict) and t.get('contract', '').lower() == contract_addr), None)
                 
                 # 获取余额
                 balance = await self.get_token_balance(address, token['contract'])
-                token['number'] = balance
                 
                 if balance > 0:
                     # 获取详细信息
                     token_name, token_symbol, token_decimals = await self.get_token_info_simple(token['contract'])
                     formatted_amount = self.format_token_amount(balance, token_decimals)
                     
-                    # 更新token名称
-                    token['token'] = f"{token_name} ({token_symbol})"
+                    log(f"🆕 新代币详情: {token_name} ({token_symbol}) - 数量: {formatted_amount}")
                     
-                    log(f"🆕 发现代币: {token['token']} - 数量: {formatted_amount}")
-                    
-                    # 准备代币数据（先缓存，推文处理状态稍后更新）
-                    clean_token = {
-                        'token': token['token'],
-                        'contract': token['contract'].lower(),
-                        'number': balance,
-                        'twitter_processed': False  # 初始标记为未处理推文
-                    }
-                    
-                    # 根据是否为新代币决定添加还是更新
-                    if existing_token:
-                        tokens_to_update.append((existing_token, clean_token))
-                    else:
-                        actually_new_tokens.append(clean_token)
-                    
-                    # 检查是否超过阈值，如果超过则记录到推文处理列表
+                    # 检查是否超过阈值
                     if formatted_amount >= NEW_TOKEN_AMOUNT_THRESHOLD_MIN and formatted_amount <= NEW_TOKEN_AMOUNT_THRESHOLD_MAX:
+                        # 准备推文数据
                         twitter_token_info = {
                             'address': address,
-                            'contract': token['contract'],
-                            'token': token['token'],
+                            'contract': contract_addr,
+                            'token': f"{token_name} ({token_symbol})",
                             'decimals': token_decimals,
                             'amount': formatted_amount,
-                            'raw_balance': balance,
-                            'cache_ref': clean_token  # 保存缓存对象的引用，用于后续更新推文处理状态
+                            'raw_balance': balance
                         }
-                        tokens_for_twitter.append(twitter_token_info)
-                else:
-                    log(f"⚪ 代币 {token['contract'][:10]}... 余额为 0，但仍记录到缓存以避免重复检查")
-                    # 即使余额为0，也要记录到缓存中，避免下次重复检查
-                    clean_token = {
-                        'token': token.get('token', 'Unknown'),
-                        'contract': token['contract'].lower(),
-                        'number': 0,
-                        'twitter_processed': False  # 标记是否已经处理过推文
-                    }
-                    
-                    if existing_token:
-                        tokens_to_update.append((existing_token, clean_token))
-                    else:
-                        actually_new_tokens.append(clean_token)
+                        
+                        log(f"🐦 处理推文: {twitter_token_info['token']} - 数量: {twitter_token_info['amount']}")
+                        
+                        # 处理 Alpha 事件（推文发送）
+                        alpha_success = await self.process_alpha_event(twitter_token_info)
+                        if alpha_success:
+                            qualified_tokens.append(twitter_token_info)
+                            log(f"✅ 代币 {twitter_token_info['token']} 推文处理成功")
+                        else:
+                            log(f"⚠️ 代币 {twitter_token_info['token']} 推文处理失败")
+                
+                # 无论余额多少或推文是否成功，都将合约地址标记为已处理
+                new_processed_contracts.append(contract_addr)
+                log(f"📝 标记合约为已处理: {contract_addr}")
+                
             except Exception as e:
                 log(f"❌ 处理代币失败: {e}")
+                # 即使处理失败，也标记为已处理，避免重复尝试
+                new_processed_contracts.append(contract_addr)
         
-        # 立即更新缓存（优先缓存，确保数据不丢失）
-        log(f"💾 立即保存缓存，避免推文处理错误影响数据完整性")
-        try:
-            current_tokens = self.token_records.get(address, [])
-            
-            # 更新现有代币
-            for existing_token, updated_data in tokens_to_update:
-                existing_token.update(updated_data)
-                log(f"📝 更新现有代币记录: {updated_data['token']}")
-            
-            # 添加新代币
-            if actually_new_tokens:
-                current_tokens.extend(actually_new_tokens)
-                log(f"📝 新增代币记录: {len(actually_new_tokens)} 个")
-            
-            # 更新缓存
-            self.token_records[address] = current_tokens
-            
-            total_changes = len(tokens_to_update) + len(actually_new_tokens)
-            if total_changes > 0:
-                log(f"✅ 缓存已保存: 地址 {address} 共处理 {total_changes} 个代币记录")
-                # 立即保存到文件
-                self.save_token_records()
-            else:
-                log(f"📝 无代币记录需要更新")
-        except Exception as e:
-            log(f"❌ 更新代币记录失败: {e}")
-        
-        # 第二阶段：处理推文发送（缓存已保存，推文错误不会影响缓存）
-        log(f"🔄 第二阶段：处理推文发送（共 {len(tokens_for_twitter)} 个符合阈值的代币）")
-        qualified_tokens = []
-        
-        for twitter_token_info in tokens_for_twitter:
-            try:
-                # 移除缓存引用，准备返回的数据
-                cache_ref = twitter_token_info.pop('cache_ref')
-                qualified_tokens.append(twitter_token_info)
-                
-                log(f"🐦 处理推文: {twitter_token_info['token']} - 数量: {twitter_token_info['amount']}")
-                
-                # 处理 Alpha 事件（推文发送）
-                alpha_success = await self.process_alpha_event(twitter_token_info)
-                if alpha_success:
-                    # 标记该代币为已处理推文
-                    cache_ref['twitter_processed'] = True
-                    log(f"✅ 代币 {twitter_token_info['token']} 推文处理成功，已标记为已处理")
-                    # 再次保存缓存，更新推文处理状态
-                    self.save_token_records()
-                else:
-                    log(f"⚠️ 代币 {twitter_token_info['token']} 推文处理失败，但缓存已保存")
-            except Exception as e:
-                log(f"❌ 处理推文失败: {e}，但代币缓存已保存")
+        # 更新已处理合约列表
+        if new_processed_contracts:
+            self.token_records.extend(new_processed_contracts)
+            log(f"💾 新增 {len(new_processed_contracts)} 个已处理合约地址到缓存")
+            # 立即保存到文件
+            self.save_token_records()
         
         return qualified_tokens
     
