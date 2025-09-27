@@ -99,10 +99,10 @@ except Exception as e:
 NEW_TOKEN_AMOUNT_THRESHOLD_MIN = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD_MIN', '1_000_000'))
 NEW_TOKEN_AMOUNT_THRESHOLD_MAX = int(os.getenv('NEW_TOKEN_AMOUNT_THRESHOLD_MAX', '1_000_000_000'))
 
-CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '300'))
-
 # 时间窗口配置
+CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '300'))
 TIME_WINDOW_MINUTES = CHECK_INTERVAL / 60 + 1
+
 
 # API限制控制配置
 MIN_REQUEST_INTERVAL = float(os.getenv('MIN_REQUEST_INTERVAL', '1'))  # 最小请求间隔（秒）
@@ -166,7 +166,6 @@ def log_monitor_addresses():
 def log_threshold_config():
     """输出阈值配置相关的日志"""
     log(f'💰 新代币数量阈值: {NEW_TOKEN_AMOUNT_THRESHOLD_MIN:,} - {NEW_TOKEN_AMOUNT_THRESHOLD_MAX:,}')
-    log(f'⏰ 检查间隔: {CHECK_INTERVAL} 秒 ({CHECK_INTERVAL // 60} 分钟)')
     log(f'⏰ 时间窗口: 最近 {TIME_WINDOW_MINUTES} 分钟')
 
 def log_api_limit_config():

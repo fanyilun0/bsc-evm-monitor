@@ -469,10 +469,10 @@ class NewTokenMonitor:
         data = await self.make_api_request(params)
         if data and data.get('status') == '1':
             all_transactions = data.get('result', [])
-            log(f"📈 区块范围内API返回 {len(all_transactions)} 笔交易记录")
+            log(f"📈 chain_id: {self.chain_id} 区块范围内API返回 {len(all_transactions)} 笔交易记录")
             
             if not all_transactions:
-                log(f"📊 地址 {address} 在指定区块范围内没有代币交易记录")
+                log(f"📊 chain_id: {self.chain_id} 地址 {address} 在指定区块范围内没有代币交易记录")
                 return []
             
             # 过滤转入交易并进行额外的时间戳验证
@@ -523,18 +523,7 @@ class NewTokenMonitor:
                     else:
                         log(f"⚠️ 跳过不完整的代币数据: {token_obj}")
             
-            result = list(token_info.values())
-            log(f"🎯 最近 {minutes_ago} 分钟内发现 {len(result)} 个代币有转入交易")
-            
-            if result:
-                log(f"📝 涉及合约: {list(recent_contracts)[:5]}{'...' if len(recent_contracts) > 5 else ''}")
-                # 显示一些交易详情用于调试
-                for i, token in enumerate(result[:3]):  # 只显示前3个
-                    timestamp = int(token.get('tx_timestamp', 0))
-                    time_str = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S') if timestamp > 0 else 'Unknown'
-                    log(f"  {i+1}. {token['token']} - 合约: {token['contract'][:10]}... - 区块: {token.get('block_number', 'Unknown')} - 时间: {time_str}")
-            
-            return result
+            return list(token_info.values())
         else:
             error_result = data.get('result', 'Unknown error') if data else 'No response'
             log(f"❌ 获取代币交易失败: {error_result}")
@@ -619,8 +608,6 @@ class NewTokenMonitor:
                 if contract_addr not in self.token_records:
                     new_contract_tokens.append(token)
                     log(f"🆕 发现新合约地址: {contract_addr}")
-                else:
-                    log(f"⏭️ 跳过已处理合约: {contract_addr}")
             else:
                 log(f"⚠️ 跳过无效的代币数据: {token}")
         
@@ -773,15 +760,15 @@ class NewTokenMonitor:
                     else:
                         log("✅ 本轮检查完成，无新代币超过阈值")
                     
-                    log(f"⏰ 等待 {CHECK_INTERVAL // 60} 分钟后继续监听...")
-                    await asyncio.sleep(CHECK_INTERVAL)
+                    log(f"⏰ 等待 {TIME_WINDOW_MINUTES // 60} 分钟后继续监听...")
+                    await asyncio.sleep(TIME_WINDOW_MINUTES)
                     
                 except KeyboardInterrupt:
                     log("\n⏹️  监听器已手动停止")
                     break
                 except Exception as e:
                     log(f"❌ 监听过程中出错: {e}")
-                    await asyncio.sleep(CHECK_INTERVAL)
+                    await asyncio.sleep(TIME_WINDOW_MINUTES)
 
 class MultiChainMonitor:
     """多链监听器"""
