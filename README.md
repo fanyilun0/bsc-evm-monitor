@@ -79,17 +79,29 @@ MONITOR_ADDRESSES=["0x1234567890abcdef", "0xabcdef1234567890", "0x9876543210fedc
 # 方式2: 逗号分隔格式 (兼容)
 # MONITOR_ADDRESSES=0x1234567890abcdef,0xabcdef1234567890,0x9876543210fedcba
 
-# 新代币数量阈值 (默认 1M = 1000000)
-NEW_TOKEN_AMOUNT_THRESHOLD=1000000
+# 新代币数量阈值 (默认 min = 1M, max = 1B)
+NEW_TOKEN_AMOUNT_THRESHOLD_MIN=1000000
+NEW_TOKEN_AMOUNT_THRESHOLD_MAX=1000000000
 
-# 检查间隔 (秒，默认 600 = 10分钟)
-CHECK_INTERVAL=600
+# 检查间隔 (秒，默认 300 = 5分钟)
+CHECK_INTERVAL=300
 
 # 时间窗口配置 (分钟，默认 10分钟)
 TIME_WINDOW_MINUTES=10
 
 # Twitter 推文发送开关 (默认启用)
 TWITTER_ENABLED=true
+
+# Twitter API 配置 (可选)
+TWITTER_API_BASE_URL=http://127.0.0.1:8000
+TWITTER_TWEET_ENDPOINT=/tweet
+TWITTER_SEARCH_ENDPOINT=/search/user_tweets
+TWITTER_USERNAME=binance
+
+# API 限制控制配置 (可选)
+MIN_REQUEST_INTERVAL=1           # 最小请求间隔(秒)
+RATE_LIMIT_RETRY_DELAY=5         # API限制重试延迟(秒)
+MAX_RETRIES=1                    # 最大重试次数
 ```
 
 ## 缓存系统
@@ -215,8 +227,9 @@ python view_logs.py search ERROR -d 3
 ## 告警触发条件
 
 - 检测到地址中出现**新的 ERC20 代币**（之前没有的代币）
-- 新代币的**当前余额数量**超过设定阈值
-- 默认阈值为 **1,000,000** 个代币
+- 新代币的**当前余额数量**在设定阈值范围内
+- 默认阈值范围：**1,000,000 - 1,000,000,000** 个代币
+- 过滤掉过小或过大的代币数量，避免误报
 
 ## 通知消息格式
 
@@ -227,7 +240,7 @@ python view_logs.py search ERROR -d 3
 - 链: Ethereum Mainnet
 - 涉及地址: 1 个
 - 新代币总数: 1 个
-- 阈值: 1,000,000
+- 阈值: 1,000,000 - 1,000,000,000
 - 检测时间: 2024-01-01 12:00:00
 
 📍 地址: 0x1234567890abcdef
@@ -353,12 +366,16 @@ MONITOR_ADDRESSES=0x1234567890abcdef,0xabcdef1234567890,0x9876543210fedcba
 
 ## 高级配置
 
-### 自定义阈值
+### 自定义阈值范围
 
 ```env
-# 设置不同的阈值
-NEW_TOKEN_AMOUNT_THRESHOLD=500000      # 50万个代币
-NEW_TOKEN_AMOUNT_THRESHOLD=10000000    # 1000万个代币
+# 设置不同的阈值范围
+NEW_TOKEN_AMOUNT_THRESHOLD_MIN=500000         # 最小50万个代币
+NEW_TOKEN_AMOUNT_THRESHOLD_MAX=10000000       # 最大1000万个代币
+
+# 只监听特定数量级的代币
+NEW_TOKEN_AMOUNT_THRESHOLD_MIN=1000000        # 100万
+NEW_TOKEN_AMOUNT_THRESHOLD_MAX=100000000      # 1亿
 ```
 
 ### 多地址监听
@@ -371,8 +388,11 @@ MONITOR_ADDRESSES=["0xaddr1", "0xaddr2", "0xaddr3", "0xaddr4"]
 ### 调整检查频率
 
 ```env
-# 每 5 分钟检查一次
+# 每 5 分钟检查一次 (默认)
 CHECK_INTERVAL=300
+
+# 每 10 分钟检查一次
+CHECK_INTERVAL=600
 
 # 每 30 分钟检查一次
 CHECK_INTERVAL=1800
